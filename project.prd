@@ -1,0 +1,183 @@
+Product Requirements Document (PRD)
+Battle City AI Game (Tank 1990)
+
+Course: AL2002 – Artificial Intelligence Lab
+Semester: Spring 2026
+Team Size: 1–2 Members
+Language: Python
+
+1. Overview
+1.1 Product Summary
+
+Battle City AI Game is a 2D grid-based tank combat game that integrates core Artificial Intelligence concepts including:
+
+Constraint Satisfaction Problems (CSP)
+Search Algorithms (BFS, Greedy Best-First, A*)
+Intelligent Agents
+Adversarial Search (Minimax + Alpha-Beta Pruning)
+
+The system simulates dynamic gameplay where enemy tanks exhibit different intelligent behaviors based on AI algorithms.
+
+1.2 Objectives
+Build a fully functional Battle City game
+Demonstrate AI algorithms through gameplay behavior
+Implement intelligent agents with distinct decision-making logic
+Showcase adversarial decision-making using Minimax
+Provide analytical comparison of algorithms
+2. Game Description
+2.1 Game World
+Grid Size: 26 × 26 tiles
+Coordinate System:
+Top-left: (0,0)
+X → right, Y → down
+Fixed Positions:
+Eagle/Base: Bottom center (~12,24)
+Enemy Spawns: Top-left, top-center, top-right
+Player Spawn: Bottom-left
+2.2 Core Mechanics
+Movement
+Tanks move in 4 directions (Up, Down, Left, Right)
+Movement restricted by terrain
+Shooting
+Each tank fires one bullet at a time
+Bullet interactions:
+Brick → destroyed
+Steel → blocks bullet
+Tank → damage
+Eagle → game over
+Game Loop
+
+Each tick executes:
+
+Player input
+AI decisions
+Movement
+Shooting
+Bullet update
+Collision detection
+State update
+Enemy spawn
+Render
+Win/Lose check
+2.3 Win/Lose Conditions
+
+Win:
+
+Destroy all enemy tanks
+
+Lose:
+
+Player loses all lives
+Eagle is destroyed
+3. Levels Design
+3.1 Level 1 — Brick Maze
+Dense brick environment
+Enemies:
+Basic Tanks (BFS)
+Fast Tanks (Greedy)
+Focus:
+Dynamic map changes
+BFS path recalculation
+3.2 Level 2 — Steel Fortress
+Mix of brick and steel walls
+Enemies:
+Fast Tanks
+Armor Tanks (A*)
+Focus:
+Cost-aware navigation
+Strategic movement
+3.3 Boss Level — Tank Commander
+Small arena (12×12)
+Single Boss Tank
+Uses:
+Minimax + Alpha-Beta
+Multi-phase behavior based on HP
+4. Tank Types & AI Behavior
+4.1 Basic Tank
+HP: 1
+Algorithm: BFS
+Agent Type: Simple Reflex
+Behavior:
+Moves via shortest path to Eagle
+Shoots if player in line-of-sight
+4.2 Fast Tank
+HP: 1
+Algorithm: Greedy Best-First
+Agent Type: Goal-Based
+Behavior:
+Rushes toward Eagle
+Ignores player
+May get stuck (local minima)
+4.3 Armor Tank
+HP: 4
+Algorithm: A*
+Agent Type: Model-Based Reflex
+Behavior:
+Uses cost-aware pathfinding
+Retreats after 3 hits
+Replans path dynamically
+4.4 Boss Tank
+HP: 10
+Algorithm: Minimax + Alpha-Beta
+Agent Type: Adversarial
+Behavior:
+Predicts player moves
+Uses evaluation heuristic
+Adjusts depth based on phase
+5. Environment Representation
+Value	Tile Type
+0	Empty
+1	Brick
+2	Steel
+3	Water
+4	Forest
+5	Eagle
+6. Module A — CSP Map Generator
+Requirements
+Generate valid random maps
+Maintain playability constraints:
+Constraints
+Eagle must be protected
+Path from spawn → Eagle must exist
+Spawn distance ≥ 10 tiles from player
+Wall density ≤ 40%
+Water must not block only path
+Implementation
+Use:
+Backtracking
+Forward checking
+Validate using BFS
+7. Module B — Search Algorithms
+Algorithms & Behavior
+Algorithm	Tank	Behavior
+BFS	Basic	Shortest path (ignores cost)
+Greedy	Fast	Rush using heuristic
+A*	Armor	Cost-optimal path
+Requirement
+Differences must be visually observable
+8. Module C — Adversarial Search
+Boss AI
+Algorithm: Minimax + Alpha-Beta
+Depth:
+Phase 1: 2
+Phase 2: 3
+Phase 3: 4
+Requirements
+Implement pruning
+Measure:
+Nodes without pruning
+Nodes with pruning
+Speedup ratio
+9. Functional Requirements
+Player movement & shooting
+Enemy AI behaviors
+Bullet physics
+Collision system
+Dynamic map updates
+Enemy spawning system
+Health & lives tracking
+10. Non-Functional Requirements
+Real-time gameplay performance
+Clear visualization of AI behavior
+Modular code structure
+Readable and maintainable code
