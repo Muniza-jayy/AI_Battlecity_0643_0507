@@ -14,6 +14,8 @@ from config.settings import (
     SCREEN_WIDTH,
     WINDOW_TITLE,
 )
+from game.entities.player import move_player
+from game.entities.tank import Direction
 from game.core.state import GameState, InputState
 from game.ui.renderer import draw_scene
 
@@ -64,6 +66,16 @@ def collect_input() -> InputState:
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
             input_state.toggle_pause_requested = True
 
+    pressed = pygame.key.get_pressed()
+    if pressed[pygame.K_UP] or pressed[pygame.K_w]:
+        input_state.movement_direction = Direction.UP
+    elif pressed[pygame.K_DOWN] or pressed[pygame.K_s]:
+        input_state.movement_direction = Direction.DOWN
+    elif pressed[pygame.K_LEFT] or pressed[pygame.K_a]:
+        input_state.movement_direction = Direction.LEFT
+    elif pressed[pygame.K_RIGHT] or pressed[pygame.K_d]:
+        input_state.movement_direction = Direction.RIGHT
+
     return input_state
 
 
@@ -76,6 +88,9 @@ def update_game_state(game_state: GameState, input_state: InputState) -> None:
     if input_state.toggle_pause_requested:
         game_state.paused = not game_state.paused
 
+    if not game_state.paused:
+        move_player(game_state.player, input_state.movement_direction, game_state.tile_map)
+
     game_state.frame_count += 1
 
 
@@ -86,7 +101,7 @@ def render_frame(
     game_state: GameState,
 ) -> None:
     """Render the current game scene and present it with letterboxing."""
-    draw_scene(scene, font, game_state.tile_map, game_state.paused)
+    draw_scene(scene, font, game_state.tile_map, game_state.player, game_state.paused)
 
     window_width, window_height = window.get_size()
     viewport = compute_letterbox(

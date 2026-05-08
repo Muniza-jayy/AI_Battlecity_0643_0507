@@ -14,6 +14,7 @@ from config.settings import (
     TEXT_COLOR,
     TILE_SIZE,
 )
+from game.entities.tank import Direction, Tank
 from game.world.tiles import TileMap, TileType
 
 
@@ -35,6 +36,7 @@ def draw_scene(
     surface: pygame.Surface,
     font: pygame.font.Font,
     tile_map: TileMap,
+    player: Tank,
     paused: bool,
 ) -> None:
     """Draw the full milestone scene for the current frame."""
@@ -45,6 +47,7 @@ def draw_scene(
         pygame.Rect(MAP_WIDTH, 0, SCREEN_WIDTH - MAP_WIDTH, SCREEN_HEIGHT),
     )
     render_tile_map(surface, tile_map, font)
+    draw_player(surface, player)
 
     title = font.render("Battle City AI", True, TEXT_COLOR)
     surface.blit(title, (24, 24))
@@ -72,16 +75,35 @@ def render_tile_map(
 
     hud_x = MAP_WIDTH + 20
     labels = (
-        "Milestone 3",
-        "Core Loop Ready",
+        "Milestone 4",
+        "Player Movement Ready",
         f"Grid: {tile_map.width}x{tile_map.height}",
         f"Tile: {TILE_SIZE}px",
         f"HUD: {HUD_WIDTH}px",
         "P: pause",
+        "Arrows/WASD: move",
     )
     for index, label in enumerate(labels):
         text_surface = font.render(label, True, HUD_TEXT_COLOR)
         surface.blit(text_surface, (hud_x, 24 + index * 34))
+
+
+def draw_player(surface: pygame.Surface, player: Tank) -> None:
+    """Draw the player tank body and facing marker."""
+    body_rect = pygame.Rect(0, 0, player.size, player.size)
+    body_rect.center = (round(player.x), round(player.y))
+    pygame.draw.rect(surface, (235, 214, 92), body_rect, border_radius=6)
+    pygame.draw.rect(surface, (80, 64, 24), body_rect, width=2, border_radius=6)
+
+    center = body_rect.center
+    half = player.size // 2
+    barrel_end = {
+        Direction.UP: (center[0], center[1] - half - 6),
+        Direction.DOWN: (center[0], center[1] + half + 6),
+        Direction.LEFT: (center[0] - half - 6, center[1]),
+        Direction.RIGHT: (center[0] + half + 6, center[1]),
+    }[player.facing]
+    pygame.draw.line(surface, (80, 64, 24), center, barrel_end, width=4)
 
 
 def _draw_spawn_marker(surface: pygame.Surface, position: tuple[int, int], label: str) -> None:

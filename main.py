@@ -9,6 +9,7 @@ import pygame  # type: ignore[import]
 from config.settings import SCREEN_HEIGHT, SCREEN_WIDTH, WINDOW_TITLE
 from game.core.loop import create_display, run_fixed_step
 from game.core.state import GameState
+from game.entities.player import spawn_player
 from game.world.map_loader import load_starter_level
 
 
@@ -20,7 +21,11 @@ def main(max_frames: Optional[int] = None) -> int:
     window = create_display(max_frames)
     scene = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
     font = pygame.font.Font(None, 32)
-    game_state = GameState(tile_map=load_starter_level())
+    tile_map = load_starter_level()
+    game_state = GameState(
+        tile_map=tile_map,
+        player=spawn_player(tile_map.player_spawn),
+    )
 
     try:
         return run_fixed_step(window, scene, font, game_state, max_frames=max_frames)

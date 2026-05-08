@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from game.entities.tank import Direction, Tank
 from game.world.tiles import TileMap
 
 
@@ -14,6 +15,7 @@ class InputState:
     quit_requested: bool = False
     toggle_pause_requested: bool = False
     resized_to: tuple[int, int] | None = None
+    movement_direction: Direction | None = None
 
 
 @dataclass
@@ -21,6 +23,7 @@ class GameState:
     """Minimal runtime state for Milestone 3."""
 
     tile_map: TileMap
+    player: Tank
     paused: bool = False
     running: bool = True
     frame_count: int = 0

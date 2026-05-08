@@ -2,11 +2,13 @@
 
 from game.core.state import GameState, InputState
 from game.core.loop import update_game_state
+from game.entities.player import spawn_player
 from game.world.map_loader import load_starter_level
 
 
 def test_update_game_state_toggles_pause() -> None:
-    game_state = GameState(tile_map=load_starter_level())
+    tile_map = load_starter_level()
+    game_state = GameState(tile_map=tile_map, player=spawn_player(tile_map.player_spawn))
 
     update_game_state(game_state, InputState(toggle_pause_requested=True))
 
@@ -15,7 +17,8 @@ def test_update_game_state_toggles_pause() -> None:
 
 
 def test_update_game_state_advances_frames_when_not_paused() -> None:
-    game_state = GameState(tile_map=load_starter_level())
+    tile_map = load_starter_level()
+    game_state = GameState(tile_map=tile_map, player=spawn_player(tile_map.player_spawn))
 
     update_game_state(game_state, InputState())
 
@@ -24,7 +27,8 @@ def test_update_game_state_advances_frames_when_not_paused() -> None:
 
 
 def test_update_game_state_honors_quit_request() -> None:
-    game_state = GameState(tile_map=load_starter_level())
+    tile_map = load_starter_level()
+    game_state = GameState(tile_map=tile_map, player=spawn_player(tile_map.player_spawn))
 
     update_game_state(game_state, InputState(quit_requested=True))
 
@@ -32,7 +36,8 @@ def test_update_game_state_honors_quit_request() -> None:
 
 
 def test_update_game_state_counts_frames_while_paused() -> None:
-    game_state = GameState(tile_map=load_starter_level(), paused=True)
+    tile_map = load_starter_level()
+    game_state = GameState(tile_map=tile_map, player=spawn_player(tile_map.player_spawn), paused=True)
 
     update_game_state(game_state, InputState())
 
