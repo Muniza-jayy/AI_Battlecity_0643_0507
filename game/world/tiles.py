@@ -32,7 +32,7 @@ TILE_PROPERTIES: dict[TileType, TileProperties] = {
 }
 
 
-@dataclass(frozen=True)
+@dataclass
 class TileMap:
     width: int
     height: int

@@ -14,6 +14,7 @@ from config.settings import (
     TEXT_COLOR,
     TILE_SIZE,
 )
+from game.entities.bullet import Bullet
 from game.entities.tank import Direction, Tank
 from game.world.tiles import TileMap, TileType
 
@@ -37,6 +38,7 @@ def draw_scene(
     font: pygame.font.Font,
     tile_map: TileMap,
     player: Tank,
+    player_bullet: Bullet | None,
     paused: bool,
 ) -> None:
     """Draw the full milestone scene for the current frame."""
@@ -48,6 +50,8 @@ def draw_scene(
     )
     render_tile_map(surface, tile_map, font)
     draw_player(surface, player)
+    if player_bullet is not None and player_bullet.active:
+        draw_bullet(surface, player_bullet)
 
     title = font.render("Battle City AI", True, TEXT_COLOR)
     surface.blit(title, (24, 24))
@@ -75,13 +79,14 @@ def render_tile_map(
 
     hud_x = MAP_WIDTH + 20
     labels = (
-        "Milestone 4",
-        "Player Movement Ready",
+        "Milestone 5",
+        "Projectiles Ready",
         f"Grid: {tile_map.width}x{tile_map.height}",
         f"Tile: {TILE_SIZE}px",
         f"HUD: {HUD_WIDTH}px",
         "P: pause",
         "Arrows/WASD: move",
+        "Space: fire",
     )
     for index, label in enumerate(labels):
         text_surface = font.render(label, True, HUD_TEXT_COLOR)
@@ -104,6 +109,11 @@ def draw_player(surface: pygame.Surface, player: Tank) -> None:
         Direction.RIGHT: (center[0] + half + 6, center[1]),
     }[player.facing]
     pygame.draw.line(surface, (80, 64, 24), center, barrel_end, width=4)
+
+
+def draw_bullet(surface: pygame.Surface, bullet: Bullet) -> None:
+    """Draw an active projectile."""
+    pygame.draw.circle(surface, (250, 244, 191), (round(bullet.x), round(bullet.y)), bullet.radius)
 
 
 def _draw_spawn_marker(surface: pygame.Surface, position: tuple[int, int], label: str) -> None:

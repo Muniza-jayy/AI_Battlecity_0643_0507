@@ -14,6 +14,14 @@ def is_near_lane_center(coordinate: float, tile_size: int, threshold: float) -> 
     return abs(lane_center_delta(coordinate, tile_size)) <= threshold
 
 
+def step_toward_lane_center(coordinate: float, tile_size: int, max_step: float) -> float:
+    """Move a coordinate toward the nearest lane center by at most one movement step."""
+    delta = lane_center_delta(coordinate, tile_size)
+    if abs(delta) <= max_step:
+        return coordinate + delta
+    return coordinate + max_step * (1 if delta > 0 else -1)
+
+
 def align_toward_lane_center(
     coordinate: float,
     tile_size: int,

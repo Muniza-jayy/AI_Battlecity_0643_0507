@@ -14,10 +14,12 @@ from config.settings import (
     SCREEN_WIDTH,
     WINDOW_TITLE,
 )
+from game.entities.bullet import spawn_bullet_from_tank
 from game.entities.player import move_player
 from game.entities.tank import Direction
 from game.core.state import GameState, InputState
 from game.ui.renderer import draw_scene
+from game.world.projectiles import BulletHit, advance_bullet
 
 
 def compute_letterbox(
@@ -65,6 +67,8 @@ def collect_input() -> InputState:
             input_state.resized_to = event.size
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
             input_state.toggle_pause_requested = True
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
+            input_state.fire_requested = True
 
     pressed = pygame.key.get_pressed()
     if pressed[pygame.K_UP] or pressed[pygame.K_w]:
@@ -90,6 +94,15 @@ def update_game_state(game_state: GameState, input_state: InputState) -> None:
 
     if not game_state.paused:
         move_player(game_state.player, input_state.movement_direction, game_state.tile_map)
+        if input_state.fire_requested and game_state.player_bullet is None:
+            game_state.player_bullet = spawn_bullet_from_tank(game_state.player)
+        if game_state.player_bullet is not None:
+            hit = advance_bullet(game_state.player_bullet, game_state.tile_map)
+            if hit is BulletHit.EAGLE:
+                game_state.eagle_destroyed = True
+                game_state.running = False
+            if not game_state.player_bullet.active:
+                game_state.player_bullet = None
 
     game_state.frame_count += 1
 
@@ -101,7 +114,14 @@ def render_frame(
     game_state: GameState,
 ) -> None:
     """Render the current game scene and present it with letterboxing."""
-    draw_scene(scene, font, game_state.tile_map, game_state.player, game_state.paused)
+    draw_scene(
+        scene,
+        font,
+        game_state.tile_map,
+        game_state.player,
+        game_state.player_bullet,
+        game_state.paused,
+    )
 
     window_width, window_height = window.get_size()
     viewport = compute_letterbox(

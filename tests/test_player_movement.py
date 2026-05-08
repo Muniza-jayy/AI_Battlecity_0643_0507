@@ -79,5 +79,5 @@ def test_perpendicular_turn_is_blocked_when_too_far_from_lane_center() -> None:
 
     move_player(player, Direction.UP, tile_map)
 
-    assert player.x == starting_x
+    assert player.x == starting_x - player.speed
     assert player.y == starting_y

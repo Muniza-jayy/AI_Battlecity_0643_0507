@@ -5,7 +5,11 @@ from __future__ import annotations
 from config.balance import ALIGNMENT_THRESHOLD, PLAYER_SPEED, TANK_SIZE
 from config.settings import TILE_SIZE
 from game.entities.tank import Direction, Tank, direction_vector
-from game.world.alignment import align_toward_lane_center, is_near_lane_center
+from game.world.alignment import (
+    align_toward_lane_center,
+    is_near_lane_center,
+    step_toward_lane_center,
+)
 from game.world.collision import tank_can_occupy
 from game.world.tiles import TileMap
 
@@ -35,11 +39,17 @@ def move_player(player: Tank, desired_direction: Direction | None, tile_map: Til
 
     if dx != 0:
         if not is_near_lane_center(player.y, TILE_SIZE, ALIGNMENT_THRESHOLD):
+            aligned_y = step_toward_lane_center(player.y, TILE_SIZE, player.speed)
+            if aligned_y != player.y and tank_can_occupy(player.x, aligned_y, player.size, tile_map):
+                player.y = aligned_y
             return
         next_y = align_toward_lane_center(player.y, TILE_SIZE, player.speed, ALIGNMENT_THRESHOLD)
         next_x += dx * player.speed
     else:
         if not is_near_lane_center(player.x, TILE_SIZE, ALIGNMENT_THRESHOLD):
+            aligned_x = step_toward_lane_center(player.x, TILE_SIZE, player.speed)
+            if aligned_x != player.x and tank_can_occupy(aligned_x, player.y, player.size, tile_map):
+                player.x = aligned_x
             return
         next_x = align_toward_lane_center(player.x, TILE_SIZE, player.speed, ALIGNMENT_THRESHOLD)
         next_y += dy * player.speed
