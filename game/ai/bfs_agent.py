@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections import deque
 
-from config.settings import TILE_SIZE
 from game.entities.tank import Direction, Tank
 from game.world.tiles import TileMap, is_passable_for_tanks
+from config.settings import TILE_SIZE
 
 
 def choose_basic_direction(
@@ -64,6 +64,26 @@ def eagle_adjacent_tiles(tile_map: TileMap, eagle_position: tuple[int, int]) -> 
     return goals
 
 
+def neighbor_tiles(
+    tile_map: TileMap,
+    tile: tuple[int, int],
+) -> list[tuple[int, int]]:
+    """Return passable neighbor tiles in movement order."""
+    x, y = tile
+    neighbors: list[tuple[int, int]] = []
+    for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+        if nx < 0 or ny < 0 or nx >= tile_map.width or ny >= tile_map.height:
+            continue
+        if not is_passable_for_tanks(tile_map.tile_at(nx, ny)):
+            continue
+        neighbors.append((nx, ny))
+    return neighbors
+
+
+def manhattan_distance(a: tuple[int, int], b: tuple[int, int]) -> int:
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+
 def bfs_path(
     tile_map: TileMap,
     start: tuple[int, int],
@@ -78,17 +98,13 @@ def bfs_path(
 
     while queue:
         x, y = queue.popleft()
-        for nx, ny in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
-            if nx < 0 or ny < 0 or nx >= tile_map.width or ny >= tile_map.height:
+        for neighbor in neighbor_tiles(tile_map, (x, y)):
+            if neighbor in parents:
                 continue
-            if (nx, ny) in parents:
-                continue
-            if not is_passable_for_tanks(tile_map.tile_at(nx, ny)):
-                continue
-            parents[(nx, ny)] = (x, y)
-            if (nx, ny) in goals:
-                return reconstruct_path(parents, (nx, ny))
-            queue.append((nx, ny))
+            parents[neighbor] = (x, y)
+            if neighbor in goals:
+                return reconstruct_path(parents, neighbor)
+            queue.append(neighbor)
 
     return [start]
 

@@ -89,6 +89,7 @@ def destroy_tile(tile_map: TileMap, tile_x: int, tile_y: int) -> None:
     mutable_rows = [list(existing_row) for existing_row in tile_map.tiles]
     mutable_rows[tile_y] = row
     tile_map.tiles = tuple(tuple(existing_row) for existing_row in mutable_rows)
+    tile_map.revision += 1
 
 
 def check_tank_hits(

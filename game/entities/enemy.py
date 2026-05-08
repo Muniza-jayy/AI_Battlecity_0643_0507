@@ -5,9 +5,21 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from collections.abc import Sequence
 
-from config.balance import BASIC_ENEMY_STUCK_TICKS, ENEMY_DECISION_INTERVAL, ENEMY_SPEED, TANK_SIZE
+from config.balance import (
+    ARMOR_ENEMY_DECISION_INTERVAL,
+    ARMOR_ENEMY_HIT_POINTS,
+    ARMOR_ENEMY_SPEED,
+    BASIC_ENEMY_STUCK_TICKS,
+    ENEMY_DECISION_INTERVAL,
+    ENEMY_SPEED,
+    FAST_ENEMY_DECISION_INTERVAL,
+    FAST_ENEMY_SPEED,
+    TANK_SIZE,
+)
 from config.settings import TILE_SIZE
+from game.ai.astar_agent import astar_path_to_eagle
 from game.ai.bfs_agent import basic_path_to_eagle, current_tile
+from game.ai.greedy_agent import greedy_path_to_eagle
 from game.ai.line_of_sight import choose_enemy_shot_direction
 from game.entities.bullet import Bullet, spawn_bullet_from_tank
 from game.entities.player import move_tank
@@ -28,19 +40,36 @@ class EnemyTank(Tank):
     bullet: Bullet | None = None
     debug_path: list[tuple[int, int]] = field(default_factory=list)
     stuck_ticks: int = 0
+    hit_points: int = 1
+    max_hit_points: int = 1
+    planned_map_revision: int = -1
 
 
 def spawn_enemy(enemy_id: int, role: str, spawn_tile: tuple[int, int]) -> EnemyTank:
     """Create an enemy tank centered on its spawn tile."""
     tile_x, tile_y = spawn_tile
+    speed = ENEMY_SPEED
+    decision_interval = ENEMY_DECISION_INTERVAL
+    hit_points = 1
+    if role == "fast":
+        speed = FAST_ENEMY_SPEED
+        decision_interval = FAST_ENEMY_DECISION_INTERVAL
+    elif role == "armor":
+        speed = ARMOR_ENEMY_SPEED
+        decision_interval = ARMOR_ENEMY_DECISION_INTERVAL
+        hit_points = ARMOR_ENEMY_HIT_POINTS
+
     return EnemyTank(
         x=tile_x * TILE_SIZE + TILE_SIZE / 2,
         y=tile_y * TILE_SIZE + TILE_SIZE / 2,
         size=TANK_SIZE,
-        speed=ENEMY_SPEED,
+        speed=speed,
         facing=Direction.DOWN,
         enemy_id=enemy_id,
         role=role,
+        decision_interval=decision_interval,
+        hit_points=hit_points,
+        max_hit_points=hit_points,
     )
 
 
@@ -68,13 +97,28 @@ def tick_enemy_decision_timer(enemy: EnemyTank) -> bool:
 
 def update_basic_enemy_decision(enemy: EnemyTank, tile_map: TileMap, player: Tank) -> bool:
     """Recompute a basic tank plan and return whether it should fire."""
-    enemy.debug_path = basic_path_to_eagle(tile_map, enemy, tile_map.eagle_position)
+    enemy.debug_path = plan_path_to_eagle(tile_map, enemy)
     enemy.desired_direction = desired_direction_from_path(enemy)
     shot_direction = choose_enemy_shot_direction(tile_map, enemy, player, tile_map.eagle_position)
     if shot_direction is not None:
         enemy.facing = shot_direction
     enemy.frames_until_decision = enemy.decision_interval
+    enemy.planned_map_revision = tile_map.revision
     return shot_direction is not None
+
+
+def plan_path_to_eagle(tile_map: TileMap, enemy: EnemyTank) -> list[tuple[int, int]]:
+    """Dispatch to the path planner that matches the enemy role."""
+    if enemy.role == "fast":
+        return greedy_path_to_eagle(tile_map, enemy, tile_map.eagle_position)
+    if enemy.role == "armor":
+        return astar_path_to_eagle(tile_map, enemy, tile_map.eagle_position)
+    return basic_path_to_eagle(tile_map, enemy, tile_map.eagle_position)
+
+
+def enemy_requires_replan(enemy: EnemyTank, tile_map: TileMap) -> bool:
+    """Return whether the current stored plan is stale against the live map."""
+    return enemy.planned_map_revision != tile_map.revision
 
 
 def move_enemy(enemy: EnemyTank, tile_map: TileMap, blocking_tanks: Sequence[Tank]) -> bool:

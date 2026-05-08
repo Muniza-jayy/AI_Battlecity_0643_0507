@@ -17,6 +17,7 @@ from config.settings import (
 from config.balance import MAX_ACTIVE_ENEMIES
 from game.entities.bullet import spawn_bullet_from_tank
 from game.entities.enemy import (
+    enemy_requires_replan,
     fire_enemy_bullet,
     move_enemy,
     tick_enemy_decision_timer,
@@ -125,9 +126,9 @@ def update_game_state(game_state: GameState, input_state: InputState) -> None:
             if impact.hit is BulletHit.EAGLE:
                 game_state.eagle_destroyed = True
             elif impact.hit is BulletHit.ENEMY and impact.enemy_id is not None:
-                destroy_enemy(game_state, impact.enemy_id)
-                game_state.score += 100
-                game_state.enemies_remaining = max(0, game_state.enemies_remaining - 1)
+                if damage_enemy(game_state, impact.enemy_id):
+                    game_state.score += 100
+                    game_state.enemies_remaining = max(0, game_state.enemies_remaining - 1)
             if not game_state.player_bullet.active:
                 game_state.player_bullet = None
 
@@ -234,6 +235,8 @@ def spawn_waiting_enemies(game_state: GameState) -> None:
 def update_enemies(game_state: GameState) -> None:
     """Update enemy decisions, movement, and bullets."""
     for enemy in list(game_state.active_enemies):
+        if enemy_requires_replan(enemy, game_state.tile_map):
+            enemy.frames_until_decision = 0
         if tick_enemy_decision_timer(enemy):
             should_fire = update_basic_enemy_decision(enemy, game_state.tile_map, game_state.player)
             if should_fire:
@@ -254,8 +257,19 @@ def update_enemies(game_state: GameState) -> None:
                 enemy.bullet = None
 
 
-def destroy_enemy(game_state: GameState, enemy_id: int) -> None:
-    """Remove one enemy tank from active play."""
+def damage_enemy(game_state: GameState, enemy_id: int) -> bool:
+    """Apply one hit to an enemy and return whether it was destroyed."""
+    for enemy in game_state.active_enemies:
+        if enemy.enemy_id != enemy_id:
+            continue
+        enemy.hit_points -= 1
+        if enemy.hit_points > 0:
+            return False
+        break
+    else:
+        return False
+
     game_state.active_enemies = [
         enemy for enemy in game_state.active_enemies if enemy.enemy_id != enemy_id
     ]
+    return True

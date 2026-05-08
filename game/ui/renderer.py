@@ -128,8 +128,9 @@ def draw_enemies(surface: pygame.Surface, enemies: list[EnemyTank]) -> None:
         draw_enemy_path(surface, enemy)
         body_rect = pygame.Rect(0, 0, enemy.size, enemy.size)
         body_rect.center = (round(enemy.x), round(enemy.y))
-        pygame.draw.rect(surface, (202, 107, 79), body_rect, border_radius=6)
-        pygame.draw.rect(surface, (84, 36, 26), body_rect, width=2, border_radius=6)
+        fill_color, outline_color = enemy_colors(enemy)
+        pygame.draw.rect(surface, fill_color, body_rect, border_radius=6)
+        pygame.draw.rect(surface, outline_color, body_rect, width=2, border_radius=6)
 
         center = body_rect.center
         half = enemy.size // 2
@@ -139,7 +140,10 @@ def draw_enemies(surface: pygame.Surface, enemies: list[EnemyTank]) -> None:
             Direction.LEFT: (center[0] - half - 6, center[1]),
             Direction.RIGHT: (center[0] + half + 6, center[1]),
         }[enemy.facing]
-        pygame.draw.line(surface, (84, 36, 26), center, barrel_end, width=4)
+        pygame.draw.line(surface, outline_color, center, barrel_end, width=4)
+
+        if enemy.max_hit_points > 1:
+            draw_enemy_armor(surface, body_rect, enemy)
 
         if enemy.bullet is not None and enemy.bullet.active:
             draw_bullet(surface, enemy.bullet)
@@ -154,7 +158,35 @@ def draw_enemy_path(surface: pygame.Surface, enemy: EnemyTank) -> None:
         (tile_x * TILE_SIZE + TILE_SIZE // 2, tile_y * TILE_SIZE + TILE_SIZE // 2)
         for tile_x, tile_y in enemy.debug_path
     ]
-    pygame.draw.lines(surface, (112, 230, 219), False, points, width=2)
+    pygame.draw.lines(surface, path_color(enemy), False, points, width=2)
+
+
+def enemy_colors(enemy: EnemyTank) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+    if enemy.role == "fast":
+        return (90, 186, 202), (27, 70, 82)
+    if enemy.role == "armor":
+        return (171, 177, 188), (66, 70, 79)
+    return (202, 107, 79), (84, 36, 26)
+
+
+def path_color(enemy: EnemyTank) -> tuple[int, int, int]:
+    if enemy.role == "fast":
+        return (130, 235, 250)
+    if enemy.role == "armor":
+        return (216, 223, 233)
+    return (112, 230, 219)
+
+
+def draw_enemy_armor(surface: pygame.Surface, body_rect: pygame.Rect, enemy: EnemyTank) -> None:
+    pip_width = 7
+    gap = 3
+    total_width = enemy.max_hit_points * pip_width + (enemy.max_hit_points - 1) * gap
+    start_x = body_rect.centerx - total_width // 2
+    y = body_rect.top - 8
+    for index in range(enemy.max_hit_points):
+        color = (242, 214, 88) if index < enemy.hit_points else (87, 91, 99)
+        pip_rect = pygame.Rect(start_x + index * (pip_width + gap), y, pip_width, 4)
+        pygame.draw.rect(surface, color, pip_rect, border_radius=2)
 
 
 def draw_hud(
@@ -171,8 +203,8 @@ def draw_hud(
     """Draw the current playable-match status in the HUD."""
     hud_x = MAP_WIDTH + 20
     labels = (
-        "Milestone 7",
-        "Basic Enemy Active",
+        "Milestone 8",
+        "BFS / Greedy / A*",
         f"Lives: {lives}",
         f"Score: {score}",
         f"Enemies: {enemies_remaining}",

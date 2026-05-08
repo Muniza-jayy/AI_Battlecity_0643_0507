@@ -40,6 +40,7 @@ class TileMap:
     player_spawn: tuple[int, int]
     enemy_spawns: tuple[tuple[int, int], ...]
     eagle_position: tuple[int, int]
+    revision: int = 0
 
     def tile_at(self, x: int, y: int) -> TileType:
         return self.tiles[y][x]

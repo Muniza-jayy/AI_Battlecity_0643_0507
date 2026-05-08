@@ -49,6 +49,7 @@ def test_bullet_destroys_brick_and_stops() -> None:
     assert bullet.active is False
     assert hit is BulletHit.BRICK
     assert tile_map.tile_at(3, 2) is TileType.EMPTY
+    assert tile_map.revision == 1
 
 
 def test_bullet_stops_on_steel_without_destroying_it() -> None:

@@ -2,15 +2,24 @@
 
 from config.levels import STARTER_ENEMY_POOL
 from config.settings import GRID_HEIGHT, GRID_WIDTH, TILE_SIZE
+from game.ai.astar_agent import astar_path_to_eagle
 from game.ai.bfs_agent import basic_path_to_eagle, choose_basic_direction
+from game.ai.greedy_agent import greedy_path_to_eagle
 from game.ai.line_of_sight import choose_enemy_shot_direction, choose_enemy_shot_target, has_clear_tile_line
-from game.core.loop import spawn_waiting_enemies, update_enemies
+from game.core.loop import damage_enemy, spawn_waiting_enemies, update_enemies
 from game.core.state import GameState
 from game.entities.bullet import spawn_bullet_from_tank
-from game.entities.enemy import move_enemy, spawn_enemy, try_spawn_enemy, update_basic_enemy_decision
+from game.entities.enemy import (
+    enemy_requires_replan,
+    move_enemy,
+    spawn_enemy,
+    try_spawn_enemy,
+    update_basic_enemy_decision,
+)
 from game.entities.player import spawn_player
 from game.entities.tank import Direction
 from game.world.map_loader import build_tile_map, load_starter_level
+from game.world.projectiles import advance_bullet
 from game.world.tiles import TileType, is_passable_for_tanks
 
 
@@ -53,6 +62,64 @@ def test_basic_enemy_bfs_finds_path_on_open_map() -> None:
         path = basic_path_to_eagle(tile_map, enemy, tile_map.eagle_position)
         assert len(path) > 1
         assert path[0] == spawn
+
+
+def test_fast_enemy_greedy_path_reaches_eagle_lane() -> None:
+    layout = empty_layout()
+    layout[10] = replace_char(layout[10], 10, "E")
+    layout[5] = replace_char(layout[5], 5, "B")
+    tile_map = build_tile_map(layout, (12, 12), ((0, 0),), (10, 10))
+    enemy = spawn_enemy(1, "fast", (0, 0))
+
+    path = greedy_path_to_eagle(tile_map, enemy, tile_map.eagle_position)
+
+    assert len(path) > 1
+    assert path[0] == (0, 0)
+    assert path[-1] in {(9, 10), (11, 10), (10, 9), (10, 11)}
+
+
+def test_armor_enemy_astar_path_reaches_eagle_lane() -> None:
+    layout = empty_layout()
+    layout[15] = replace_char(layout[15], 20, "E")
+    layout[12] = replace_char(layout[12], 12, "S")
+    tile_map = build_tile_map(layout, (2, 20), ((0, 0),), (20, 15))
+    enemy = spawn_enemy(1, "armor", (0, 0))
+
+    path = astar_path_to_eagle(tile_map, enemy, tile_map.eagle_position)
+
+    assert len(path) > 1
+    assert path[0] == (0, 0)
+    assert path[-1] in {(19, 15), (21, 15), (20, 14), (20, 16)}
+
+
+def test_fast_enemy_returns_stationary_path_when_eagle_is_sealed() -> None:
+    layout = empty_layout()
+    layout[10] = replace_char(layout[10], 10, "E")
+    layout[10] = replace_char(layout[10], 9, "B")
+    layout[10] = replace_char(layout[10], 11, "B")
+    layout[9] = replace_char(layout[9], 10, "S")
+    layout[11] = replace_char(layout[11], 10, "W")
+    tile_map = build_tile_map(layout, (12, 12), ((0, 0),), (10, 10))
+    enemy = spawn_enemy(1, "fast", (0, 0))
+
+    path = greedy_path_to_eagle(tile_map, enemy, tile_map.eagle_position)
+
+    assert path == [(0, 0)]
+
+
+def test_armor_enemy_returns_stationary_path_when_eagle_is_sealed() -> None:
+    layout = empty_layout()
+    layout[10] = replace_char(layout[10], 10, "E")
+    layout[10] = replace_char(layout[10], 9, "B")
+    layout[10] = replace_char(layout[10], 11, "B")
+    layout[9] = replace_char(layout[9], 10, "S")
+    layout[11] = replace_char(layout[11], 10, "W")
+    tile_map = build_tile_map(layout, (12, 12), ((0, 0),), (10, 10))
+    enemy = spawn_enemy(1, "armor", (0, 0))
+
+    path = astar_path_to_eagle(tile_map, enemy, tile_map.eagle_position)
+
+    assert path == [(0, 0)]
 
 
 def test_line_of_sight_requires_clear_row_or_column() -> None:
@@ -116,6 +183,16 @@ def test_spawn_waiting_enemies_uses_spawn_points_and_pool() -> None:
 
     assert len(game_state.active_enemies) == 3
     assert len(game_state.enemy_spawn_queue) == len(STARTER_ENEMY_POOL) - 3
+
+
+def test_spawn_enemy_assigns_role_specific_stats() -> None:
+    basic = spawn_enemy(1, "basic", (0, 0))
+    fast = spawn_enemy(2, "fast", (0, 0))
+    armor = spawn_enemy(3, "armor", (0, 0))
+
+    assert fast.speed > basic.speed
+    assert armor.hit_points == 2
+    assert armor.max_hit_points == 2
 
 
 def test_enemy_does_not_spawn_inside_blocked_tile() -> None:
@@ -189,6 +266,45 @@ def test_enemy_bullet_can_hit_player_and_reduce_lives() -> None:
     assert game_state.lives == 2
 
 
+def test_armor_enemy_requires_two_player_hits() -> None:
+    layout = empty_layout()
+    layout[10] = replace_char(layout[10], 20, "E")
+    tile_map = build_tile_map(layout, (2, 10), ((8, 10),), (20, 10))
+    armor = spawn_enemy(1, "armor", (8, 10))
+    armor.facing = Direction.RIGHT
+    game_state = GameState(
+        tile_map=tile_map,
+        player=spawn_player(tile_map.player_spawn),
+        active_enemies=[armor],
+        enemies_remaining=1,
+        enemy_count_target=1,
+    )
+    game_state.player.facing = Direction.RIGHT
+    game_state.player.x = 6 * TILE_SIZE + TILE_SIZE / 2
+    game_state.player.y = 10 * TILE_SIZE + TILE_SIZE / 2
+
+    first_bullet = spawn_bullet_from_tank(game_state.player, owner="player")
+    for _ in range(20):
+        impact = advance_bullet(first_bullet, tile_map, enemies=tuple(game_state.active_enemies))
+        if impact.enemy_id is not None:
+            destroyed = damage_enemy(game_state, impact.enemy_id)
+            assert destroyed is False
+            break
+
+    assert len(game_state.active_enemies) == 1
+    assert game_state.active_enemies[0].hit_points == 1
+
+    second_bullet = spawn_bullet_from_tank(game_state.player, owner="player")
+    for _ in range(20):
+        impact = advance_bullet(second_bullet, tile_map, enemies=tuple(game_state.active_enemies))
+        if impact.enemy_id is not None:
+            destroyed = damage_enemy(game_state, impact.enemy_id)
+            assert destroyed is True
+            break
+
+    assert game_state.active_enemies == []
+
+
 def test_enemy_bullet_does_not_hit_off_axis_player_when_shooting_past() -> None:
     layout = empty_layout()
     layout[8] = replace_char(layout[8], 15, "E")
@@ -228,6 +344,30 @@ def test_enemy_replans_after_being_stuck_for_several_ticks() -> None:
         move_enemy(enemy, tile_map, blocking_tanks=(blocker,))
 
     assert enemy.frames_until_decision == 0
+
+
+def test_enemy_replans_after_brick_destruction_changes_map_revision() -> None:
+    layout = empty_layout()
+    layout[2] = replace_char(layout[2], 3, "B")
+    layout[2] = replace_char(layout[2], 8, "E")
+    tile_map = build_tile_map(layout, (1, 2), ((0, 2),), (8, 2))
+    enemy = spawn_enemy(1, "basic", (0, 2))
+    player = spawn_player(tile_map.player_spawn)
+    player.facing = Direction.RIGHT
+
+    update_basic_enemy_decision(enemy, tile_map, player)
+    enemy.frames_until_decision = 5
+    bullet = spawn_bullet_from_tank(player, owner="player")
+    bullet.x = player.x + player.size / 2 + bullet.radius + 2
+    bullet.y = player.y
+
+    for _ in range(10):
+        advance_bullet(bullet, tile_map)
+        if not bullet.active:
+            break
+
+    assert tile_map.revision == 1
+    assert enemy_requires_replan(enemy, tile_map) is True
 
 
 def test_enemy_decision_stores_debug_bfs_path() -> None:

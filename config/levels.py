@@ -42,10 +42,10 @@ EAGLE_POSITION: Final[tuple[int, int]] = (14, 23)
 STARTER_ENEMY_POOL: Final[tuple[str, ...]] = (
     "basic",
     "basic",
-    "basic",
     "fast",
     "fast",
-    "fast",
+    "armor",
+    "armor",
 )
 
 
