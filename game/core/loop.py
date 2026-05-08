@@ -14,9 +14,17 @@ from config.settings import (
     SCREEN_WIDTH,
     WINDOW_TITLE,
 )
+from config.balance import MAX_ACTIVE_ENEMIES
 from game.entities.bullet import spawn_bullet_from_tank
+from game.entities.enemy import (
+    fire_enemy_bullet,
+    move_enemy,
+    tick_enemy_decision_timer,
+    try_spawn_enemy,
+    update_basic_enemy_decision,
+)
 from game.entities.player import move_player
-from game.entities.tank import Direction
+from game.entities.tank import Direction, Tank
 from game.core.state import GameState, InputState, MatchOutcome
 from game.ui.renderer import draw_scene
 from game.world.projectiles import BulletHit, advance_bullet
@@ -99,16 +107,31 @@ def update_game_state(game_state: GameState, input_state: InputState) -> None:
         game_state.paused = not game_state.paused
 
     if not game_state.paused:
-        move_player(game_state.player, input_state.movement_direction, game_state.tile_map)
+        spawn_waiting_enemies(game_state)
+        move_player(
+            game_state.player,
+            input_state.movement_direction,
+            game_state.tile_map,
+            blocking_tanks=tuple(game_state.active_enemies),
+        )
         if input_state.fire_requested and game_state.player_bullet is None:
-            game_state.player_bullet = spawn_bullet_from_tank(game_state.player)
+            game_state.player_bullet = spawn_bullet_from_tank(game_state.player, owner="player")
         if game_state.player_bullet is not None:
-            hit = advance_bullet(game_state.player_bullet, game_state.tile_map)
-            if hit is BulletHit.EAGLE:
+            impact = advance_bullet(
+                game_state.player_bullet,
+                game_state.tile_map,
+                enemies=tuple(game_state.active_enemies),
+            )
+            if impact.hit is BulletHit.EAGLE:
                 game_state.eagle_destroyed = True
+            elif impact.hit is BulletHit.ENEMY and impact.enemy_id is not None:
+                destroy_enemy(game_state, impact.enemy_id)
+                game_state.score += 100
+                game_state.enemies_remaining = max(0, game_state.enemies_remaining - 1)
             if not game_state.player_bullet.active:
                 game_state.player_bullet = None
 
+        update_enemies(game_state)
         evaluate_match_state(game_state)
 
     game_state.frame_count += 1
@@ -137,6 +160,7 @@ def render_frame(
         game_state.tile_map,
         game_state.player,
         game_state.player_bullet,
+        game_state.active_enemies,
         game_state.lives,
         game_state.score,
         game_state.enemies_remaining,
@@ -182,3 +206,56 @@ def run_fixed_step(
             game_state.running = False
 
     return 0
+
+
+def spawn_waiting_enemies(game_state: GameState) -> None:
+    """Spawn queued enemies into available spawn points up to the active cap."""
+    while len(game_state.active_enemies) < MAX_ACTIVE_ENEMIES and game_state.enemy_spawn_queue:
+        spawned = False
+        for spawn_tile in game_state.tile_map.enemy_spawns:
+            enemy = try_spawn_enemy(
+                game_state.next_enemy_id,
+                game_state.enemy_spawn_queue[0],
+                spawn_tile,
+                game_state.tile_map,
+                blocking_tanks=tuple([game_state.player, *game_state.active_enemies]),
+            )
+            if enemy is None:
+                continue
+            game_state.active_enemies.append(enemy)
+            game_state.enemy_spawn_queue.pop(0)
+            game_state.next_enemy_id += 1
+            spawned = True
+            break
+        if not spawned:
+            return
+
+
+def update_enemies(game_state: GameState) -> None:
+    """Update enemy decisions, movement, and bullets."""
+    for enemy in list(game_state.active_enemies):
+        if tick_enemy_decision_timer(enemy):
+            should_fire = update_basic_enemy_decision(enemy, game_state.tile_map, game_state.player)
+            if should_fire:
+                fire_enemy_bullet(enemy)
+
+        blocking_tanks: tuple[Tank, ...] = tuple(
+            tank for tank in [game_state.player, *game_state.active_enemies] if tank is not enemy
+        )
+        move_enemy(enemy, game_state.tile_map, blocking_tanks=blocking_tanks)
+
+        if enemy.bullet is not None:
+            impact = advance_bullet(enemy.bullet, game_state.tile_map, player=game_state.player)
+            if impact.hit is BulletHit.PLAYER:
+                game_state.lives = max(0, game_state.lives - 1)
+            elif impact.hit is BulletHit.EAGLE:
+                game_state.eagle_destroyed = True
+            if not enemy.bullet.active:
+                enemy.bullet = None
+
+
+def destroy_enemy(game_state: GameState, enemy_id: int) -> None:
+    """Remove one enemy tank from active play."""
+    game_state.active_enemies = [
+        enemy for enemy in game_state.active_enemies if enemy.enemy_id != enemy_id
+    ]

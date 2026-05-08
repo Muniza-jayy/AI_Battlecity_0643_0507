@@ -28,6 +28,7 @@ def main(max_frames: Optional[int] = None) -> int:
         player=spawn_player(tile_map.player_spawn),
         enemies_remaining=len(STARTER_ENEMY_POOL),
         enemy_count_target=len(STARTER_ENEMY_POOL),
+        enemy_spawn_queue=list(STARTER_ENEMY_POOL),
     )
 
     try:

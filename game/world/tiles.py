@@ -49,6 +49,10 @@ def blocks_tanks(tile_type: TileType) -> bool:
     return TILE_PROPERTIES[tile_type].blocks_tanks
 
 
+def is_passable_for_tanks(tile_type: TileType) -> bool:
+    return not TILE_PROPERTIES[tile_type].blocks_tanks
+
+
 def blocks_bullets(tile_type: TileType) -> bool:
     return TILE_PROPERTIES[tile_type].blocks_bullets
 

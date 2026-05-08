@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from enum import StrEnum
 
 from game.entities.bullet import Bullet
+from game.entities.enemy import EnemyTank
 from game.entities.tank import Direction, Tank
 from game.world.tiles import TileMap
 
@@ -34,6 +35,9 @@ class GameState:
     tile_map: TileMap
     player: Tank
     player_bullet: Bullet | None = None
+    active_enemies: list[EnemyTank] = field(default_factory=list)
+    enemy_spawn_queue: list[str] = field(default_factory=list)
+    next_enemy_id: int = 1
     eagle_destroyed: bool = False
     lives: int = 3
     score: int = 0

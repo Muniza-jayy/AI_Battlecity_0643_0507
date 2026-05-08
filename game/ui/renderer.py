@@ -15,6 +15,7 @@ from config.settings import (
     TILE_SIZE,
 )
 from game.entities.bullet import Bullet
+from game.entities.enemy import EnemyTank
 from game.entities.tank import Direction, Tank
 from game.core.state import MatchOutcome
 from game.world.tiles import TileMap, TileType
@@ -40,6 +41,7 @@ def draw_scene(
     tile_map: TileMap,
     player: Tank,
     player_bullet: Bullet | None,
+    active_enemies: list[EnemyTank],
     lives: int,
     score: int,
     enemies_remaining: int,
@@ -56,13 +58,24 @@ def draw_scene(
     )
     render_tile_map(surface, tile_map, font)
     draw_player(surface, player)
+    draw_enemies(surface, active_enemies)
     if player_bullet is not None and player_bullet.active:
         draw_bullet(surface, player_bullet)
 
     title = font.render("Battle City AI", True, TEXT_COLOR)
     surface.blit(title, (24, 24))
 
-    draw_hud(surface, font, tile_map, lives, score, enemies_remaining, eagle_destroyed, outcome)
+    draw_hud(
+        surface,
+        font,
+        tile_map,
+        lives,
+        score,
+        enemies_remaining,
+        eagle_destroyed,
+        outcome,
+        active_enemies,
+    )
 
     if paused:
         pause_label = font.render("Paused", True, TEXT_COLOR)
@@ -105,7 +118,43 @@ def draw_player(surface: pygame.Surface, player: Tank) -> None:
 
 def draw_bullet(surface: pygame.Surface, bullet: Bullet) -> None:
     """Draw an active projectile."""
-    pygame.draw.circle(surface, (250, 244, 191), (round(bullet.x), round(bullet.y)), bullet.radius)
+    color = (250, 244, 191) if bullet.owner == "player" else (231, 124, 94)
+    pygame.draw.circle(surface, color, (round(bullet.x), round(bullet.y)), bullet.radius)
+
+
+def draw_enemies(surface: pygame.Surface, enemies: list[EnemyTank]) -> None:
+    """Draw active enemy tanks and any bullets they have fired."""
+    for enemy in enemies:
+        draw_enemy_path(surface, enemy)
+        body_rect = pygame.Rect(0, 0, enemy.size, enemy.size)
+        body_rect.center = (round(enemy.x), round(enemy.y))
+        pygame.draw.rect(surface, (202, 107, 79), body_rect, border_radius=6)
+        pygame.draw.rect(surface, (84, 36, 26), body_rect, width=2, border_radius=6)
+
+        center = body_rect.center
+        half = enemy.size // 2
+        barrel_end = {
+            Direction.UP: (center[0], center[1] - half - 6),
+            Direction.DOWN: (center[0], center[1] + half + 6),
+            Direction.LEFT: (center[0] - half - 6, center[1]),
+            Direction.RIGHT: (center[0] + half + 6, center[1]),
+        }[enemy.facing]
+        pygame.draw.line(surface, (84, 36, 26), center, barrel_end, width=4)
+
+        if enemy.bullet is not None and enemy.bullet.active:
+            draw_bullet(surface, enemy.bullet)
+
+
+def draw_enemy_path(surface: pygame.Surface, enemy: EnemyTank) -> None:
+    """Overlay the currently planned BFS path for debugging."""
+    if len(enemy.debug_path) < 2:
+        return
+
+    points = [
+        (tile_x * TILE_SIZE + TILE_SIZE // 2, tile_y * TILE_SIZE + TILE_SIZE // 2)
+        for tile_x, tile_y in enemy.debug_path
+    ]
+    pygame.draw.lines(surface, (112, 230, 219), False, points, width=2)
 
 
 def draw_hud(
@@ -117,15 +166,17 @@ def draw_hud(
     enemies_remaining: int,
     eagle_destroyed: bool,
     outcome: MatchOutcome,
+    active_enemies: list[EnemyTank],
 ) -> None:
     """Draw the current playable-match status in the HUD."""
     hud_x = MAP_WIDTH + 20
     labels = (
-        "Milestone 6",
-        "Match Rules Ready",
+        "Milestone 7",
+        "Basic Enemy Active",
         f"Lives: {lives}",
         f"Score: {score}",
         f"Enemies: {enemies_remaining}",
+        f"On map: {len(active_enemies)}",
         f"Eagle: {'Destroyed' if eagle_destroyed else 'Safe'}",
         f"Grid: {tile_map.width}x{tile_map.height}",
         "P: pause",

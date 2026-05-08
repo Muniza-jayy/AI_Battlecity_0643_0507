@@ -35,12 +35,14 @@ def test_update_game_state_advances_frames_when_not_paused() -> None:
         player=spawn_player(tile_map.player_spawn),
         enemies_remaining=len(STARTER_ENEMY_POOL),
         enemy_count_target=len(STARTER_ENEMY_POOL),
+        enemy_spawn_queue=list(STARTER_ENEMY_POOL),
     )
 
     update_game_state(game_state, InputState())
 
     assert game_state.frame_count == 1
     assert game_state.running is True
+    assert len(game_state.active_enemies) > 0
 
 
 def test_update_game_state_honors_quit_request() -> None:
@@ -68,7 +70,7 @@ def test_update_game_state_ends_run_when_bullet_hits_eagle() -> None:
     tile_map = build_tile_map(layout, (2, 2), ((0, 0),), (3, 2))
     player = spawn_player(tile_map.player_spawn)
     player.facing = Direction.RIGHT
-    game_state = GameState(tile_map=tile_map, player=player)
+    game_state = GameState(tile_map=tile_map, player=player, enemy_count_target=1, enemies_remaining=1)
 
     update_game_state(game_state, InputState(fire_requested=True))
 

@@ -23,7 +23,7 @@ def test_bullet_spawns_from_player_facing_direction() -> None:
     tile_map = build_tile_map(layout, (2, 2), ((0, 0),), (5, 5))
     player = spawn_player((2, 2))
 
-    bullet = spawn_bullet_from_tank(player)
+    bullet = spawn_bullet_from_tank(player, owner="player")
 
     assert bullet.y < player.y
     assert bullet.dx == 0
@@ -37,11 +37,12 @@ def test_bullet_destroys_brick_and_stops() -> None:
     tile_map = build_tile_map(layout, (2, 2), ((0, 0),), (5, 5))
     player = spawn_player((2, 2))
     player.facing = Direction.RIGHT
-    bullet = spawn_bullet_from_tank(player)
+    bullet = spawn_bullet_from_tank(player, owner="player")
 
     hit = BulletHit.NONE
     for _ in range(10):
-        hit = advance_bullet(bullet, tile_map)
+        impact = advance_bullet(bullet, tile_map)
+        hit = impact.hit
         if hit is not BulletHit.NONE:
             break
 
@@ -57,11 +58,12 @@ def test_bullet_stops_on_steel_without_destroying_it() -> None:
     tile_map = build_tile_map(layout, (2, 2), ((0, 0),), (5, 5))
     player = spawn_player((2, 2))
     player.facing = Direction.RIGHT
-    bullet = spawn_bullet_from_tank(player)
+    bullet = spawn_bullet_from_tank(player, owner="player")
 
     hit = BulletHit.NONE
     for _ in range(10):
-        hit = advance_bullet(bullet, tile_map)
+        impact = advance_bullet(bullet, tile_map)
+        hit = impact.hit
         if hit is not BulletHit.NONE:
             break
 
@@ -75,7 +77,7 @@ def test_bullet_leaving_map_becomes_inactive() -> None:
     layout[5] = replace_char(layout[5], 5, "E")
     tile_map = build_tile_map(layout, (0, 0), ((0, 0),), (5, 5))
     player = spawn_player((0, 0))
-    bullet = spawn_bullet_from_tank(player)
+    bullet = spawn_bullet_from_tank(player, owner="player")
 
     for _ in range(10):
         advance_bullet(bullet, tile_map)
@@ -91,11 +93,12 @@ def test_bullet_hitting_eagle_reports_eagle_hit() -> None:
     tile_map = build_tile_map(layout, (2, 2), ((0, 0),), (3, 2))
     player = spawn_player((2, 2))
     player.facing = Direction.RIGHT
-    bullet = spawn_bullet_from_tank(player)
+    bullet = spawn_bullet_from_tank(player, owner="player")
 
     hit = BulletHit.NONE
     for _ in range(10):
-        hit = advance_bullet(bullet, tile_map)
+        impact = advance_bullet(bullet, tile_map)
+        hit = impact.hit
         if hit is not BulletHit.NONE:
             break
 

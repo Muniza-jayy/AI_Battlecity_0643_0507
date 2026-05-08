@@ -26,41 +26,80 @@ def spawn_player(spawn_tile: tuple[int, int]) -> Tank:
     )
 
 
-def move_player(player: Tank, desired_direction: Direction | None, tile_map: TileMap) -> None:
-    """Move the player tank with solid collision and lane alignment."""
+def move_tank(
+    tank: Tank,
+    desired_direction: Direction | None,
+    tile_map: TileMap,
+    blocking_tanks: tuple[Tank, ...] = (),
+) -> None:
+    """Move a tank with solid collision and lane alignment."""
     if desired_direction is None:
         return
 
-    player.facing = desired_direction
+    tank.facing = desired_direction
     dx, dy = direction_vector(desired_direction)
 
-    next_x = player.x
-    next_y = player.y
+    next_x = tank.x
+    next_y = tank.y
 
     if dx != 0:
-        if not is_near_lane_center(player.y, TILE_SIZE, ALIGNMENT_THRESHOLD):
-            aligned_y = step_toward_lane_center(player.y, TILE_SIZE, player.speed)
-            if aligned_y != player.y and tank_can_occupy(player.x, aligned_y, player.size, tile_map):
-                player.y = aligned_y
+        if not is_near_lane_center(tank.y, TILE_SIZE, ALIGNMENT_THRESHOLD):
+            aligned_y = step_toward_lane_center(tank.y, TILE_SIZE, tank.speed)
+            if aligned_y != tank.y and tank_can_occupy(
+                tank.x,
+                aligned_y,
+                tank.size,
+                tile_map,
+                blocking_tanks=blocking_tanks,
+            ):
+                tank.y = aligned_y
             return
-        next_y = align_toward_lane_center(player.y, TILE_SIZE, player.speed, ALIGNMENT_THRESHOLD)
-        next_x += dx * player.speed
+        next_y = align_toward_lane_center(tank.y, TILE_SIZE, tank.speed, ALIGNMENT_THRESHOLD)
+        next_x += dx * tank.speed
     else:
-        if not is_near_lane_center(player.x, TILE_SIZE, ALIGNMENT_THRESHOLD):
-            aligned_x = step_toward_lane_center(player.x, TILE_SIZE, player.speed)
-            if aligned_x != player.x and tank_can_occupy(aligned_x, player.y, player.size, tile_map):
-                player.x = aligned_x
+        if not is_near_lane_center(tank.x, TILE_SIZE, ALIGNMENT_THRESHOLD):
+            aligned_x = step_toward_lane_center(tank.x, TILE_SIZE, tank.speed)
+            if aligned_x != tank.x and tank_can_occupy(
+                aligned_x,
+                tank.y,
+                tank.size,
+                tile_map,
+                blocking_tanks=blocking_tanks,
+            ):
+                tank.x = aligned_x
             return
-        next_x = align_toward_lane_center(player.x, TILE_SIZE, player.speed, ALIGNMENT_THRESHOLD)
-        next_y += dy * player.speed
+        next_x = align_toward_lane_center(tank.x, TILE_SIZE, tank.speed, ALIGNMENT_THRESHOLD)
+        next_y += dy * tank.speed
 
-    if tank_can_occupy(next_x, next_y, player.size, tile_map):
-        player.x = next_x
-        player.y = next_y
+    if tank_can_occupy(next_x, next_y, tank.size, tile_map, blocking_tanks=blocking_tanks):
+        tank.x = next_x
+        tank.y = next_y
         return
 
     # If forward motion is blocked, still allow a small legal alignment nudge.
-    if dx != 0 and next_y != player.y and tank_can_occupy(player.x, next_y, player.size, tile_map):
-        player.y = next_y
-    elif dy != 0 and next_x != player.x and tank_can_occupy(next_x, player.y, player.size, tile_map):
-        player.x = next_x
+    if dx != 0 and next_y != tank.y and tank_can_occupy(
+        tank.x,
+        next_y,
+        tank.size,
+        tile_map,
+        blocking_tanks=blocking_tanks,
+    ):
+        tank.y = next_y
+    elif dy != 0 and next_x != tank.x and tank_can_occupy(
+        next_x,
+        tank.y,
+        tank.size,
+        tile_map,
+        blocking_tanks=blocking_tanks,
+    ):
+        tank.x = next_x
+
+
+def move_player(
+    player: Tank,
+    desired_direction: Direction | None,
+    tile_map: TileMap,
+    blocking_tanks: tuple[Tank, ...] = (),
+) -> None:
+    """Move the player tank with solid collision and lane alignment."""
+    move_tank(player, desired_direction, tile_map, blocking_tanks=blocking_tanks)

@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
+
 from config.settings import TILE_SIZE
+from game.entities.tank import Tank
 from game.world.tiles import TileMap, blocks_tanks
 
 
-def tank_can_occupy(center_x: float, center_y: float, size: int, tile_map: TileMap) -> bool:
+def tank_can_occupy(
+    center_x: float,
+    center_y: float,
+    size: int,
+    tile_map: TileMap,
+    blocking_tanks: Sequence[Tank] = (),
+) -> bool:
     """Return whether a tank body can occupy the given center position."""
     half_size = size / 2
     left = center_x - half_size
@@ -31,5 +40,15 @@ def tank_can_occupy(center_x: float, center_y: float, size: int, tile_map: TileM
         for tile_x in range(min_tile_x, max_tile_x + 1):
             if blocks_tanks(tile_map.tile_at(tile_x, tile_y)):
                 return False
+
+    for tank in blocking_tanks:
+        other_half = tank.size / 2
+        if (
+            left < tank.x + other_half
+            and right > tank.x - other_half
+            and top < tank.y + other_half
+            and bottom > tank.y - other_half
+        ):
+            return False
 
     return True
