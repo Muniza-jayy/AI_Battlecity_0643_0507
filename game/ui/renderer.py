@@ -4,7 +4,16 @@ from __future__ import annotations
 
 import pygame  # type: ignore[import]
 
-from config.settings import HUD_WIDTH, MAP_WIDTH, TILE_SIZE
+from config.settings import (
+    BACKGROUND_COLOR,
+    HUD_BACKGROUND_COLOR,
+    HUD_WIDTH,
+    MAP_WIDTH,
+    SCREEN_HEIGHT,
+    SCREEN_WIDTH,
+    TEXT_COLOR,
+    TILE_SIZE,
+)
 from game.world.tiles import TileMap, TileType
 
 
@@ -20,6 +29,29 @@ TILE_COLORS: dict[TileType, tuple[int, int, int]] = {
 SPAWN_COLOR = (230, 230, 230)
 GRID_LINE_COLOR = (26, 30, 38)
 HUD_TEXT_COLOR = (240, 240, 240)
+
+
+def draw_scene(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    tile_map: TileMap,
+    paused: bool,
+) -> None:
+    """Draw the full milestone scene for the current frame."""
+    surface.fill(BACKGROUND_COLOR)
+    pygame.draw.rect(
+        surface,
+        HUD_BACKGROUND_COLOR,
+        pygame.Rect(MAP_WIDTH, 0, SCREEN_WIDTH - MAP_WIDTH, SCREEN_HEIGHT),
+    )
+    render_tile_map(surface, tile_map, font)
+
+    title = font.render("Battle City AI", True, TEXT_COLOR)
+    surface.blit(title, (24, 24))
+
+    if paused:
+        pause_label = font.render("Paused", True, TEXT_COLOR)
+        surface.blit(pause_label, (MAP_WIDTH + 20, SCREEN_HEIGHT - 60))
 
 
 def render_tile_map(
@@ -40,11 +72,12 @@ def render_tile_map(
 
     hud_x = MAP_WIDTH + 20
     labels = (
-        "Milestone 2",
-        "Tile Map Ready",
+        "Milestone 3",
+        "Core Loop Ready",
         f"Grid: {tile_map.width}x{tile_map.height}",
         f"Tile: {TILE_SIZE}px",
         f"HUD: {HUD_WIDTH}px",
+        "P: pause",
     )
     for index, label in enumerate(labels):
         text_surface = font.render(label, True, HUD_TEXT_COLOR)
