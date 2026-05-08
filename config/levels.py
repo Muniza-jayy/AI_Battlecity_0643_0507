@@ -48,6 +48,26 @@ STARTER_ENEMY_POOL: Final[tuple[str, ...]] = (
     "armor",
 )
 
+BOSS_LEVEL_LAYOUT: Final[list[str]] = [
+    "............",
+    "..B....S....",
+    "....W....B..",
+    "...S.....W..",
+    "............",
+    ".F....B.....",
+    ".....B......",
+    "..W.....S...",
+    "....S....W..",
+    ".....B......",
+    "....BESB....",
+    ".....P......",
+]
+
+BOSS_PLAYER_SPAWN: Final[tuple[int, int]] = (5, 11)
+BOSS_ENEMY_SPAWNS: Final[tuple[tuple[int, int], ...]] = ((5, 0),)
+BOSS_EAGLE_POSITION: Final[tuple[int, int]] = (5, 10)
+BOSS_ENEMY_POOL: Final[tuple[str, ...]] = ("boss",)
+
 
 assert len(STARTER_LEVEL_LAYOUT) == GRID_HEIGHT
 assert all(len(row) == GRID_WIDTH for row in STARTER_LEVEL_LAYOUT)

@@ -43,6 +43,7 @@ class GameState:
     score: int = 0
     enemies_remaining: int = 0
     enemy_count_target: int = 0
+    level_name: str = "starter"
     outcome: MatchOutcome = MatchOutcome.ACTIVE
     paused: bool = False
     running: bool = True

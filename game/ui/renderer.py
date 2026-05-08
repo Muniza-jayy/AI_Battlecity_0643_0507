@@ -48,6 +48,7 @@ def draw_scene(
     eagle_destroyed: bool,
     outcome: MatchOutcome,
     paused: bool,
+    level_name: str,
 ) -> None:
     """Draw the full milestone scene for the current frame."""
     surface.fill(BACKGROUND_COLOR)
@@ -75,6 +76,7 @@ def draw_scene(
         eagle_destroyed,
         outcome,
         active_enemies,
+        level_name,
     )
 
     if paused:
@@ -162,6 +164,8 @@ def draw_enemy_path(surface: pygame.Surface, enemy: EnemyTank) -> None:
 
 
 def enemy_colors(enemy: EnemyTank) -> tuple[tuple[int, int, int], tuple[int, int, int]]:
+    if enemy.role == "boss":
+        return (176, 74, 72), (74, 18, 18)
     if enemy.role == "fast":
         return (90, 186, 202), (27, 70, 82)
     if enemy.role == "armor":
@@ -170,6 +174,8 @@ def enemy_colors(enemy: EnemyTank) -> tuple[tuple[int, int, int], tuple[int, int
 
 
 def path_color(enemy: EnemyTank) -> tuple[int, int, int]:
+    if enemy.role == "boss":
+        return (255, 154, 146)
     if enemy.role == "fast":
         return (130, 235, 250)
     if enemy.role == "armor":
@@ -199,12 +205,15 @@ def draw_hud(
     eagle_destroyed: bool,
     outcome: MatchOutcome,
     active_enemies: list[EnemyTank],
+    level_name: str,
 ) -> None:
     """Draw the current playable-match status in the HUD."""
     hud_x = MAP_WIDTH + 20
+    boss = next((enemy for enemy in active_enemies if enemy.role == "boss"), None)
     labels = (
-        "Milestone 8",
-        "BFS / Greedy / A*",
+        "Milestone 9",
+        "Boss Level Ready",
+        f"Level: {level_name}",
         f"Lives: {lives}",
         f"Score: {score}",
         f"Enemies: {enemies_remaining}",
@@ -218,6 +227,20 @@ def draw_hud(
     for index, label in enumerate(labels):
         text_surface = font.render(label, True, HUD_TEXT_COLOR)
         surface.blit(text_surface, (hud_x, 24 + index * 34))
+
+    if boss is not None:
+        boss_labels = (
+            f"Boss HP: {boss.hit_points}/{boss.max_hit_points}",
+            f"Boss phase: {boss.boss_phase}",
+            f"Search depth: {boss.boss_search_depth}",
+            f"Nodes raw: {boss.nodes_without_pruning}",
+            f"Nodes pruned: {boss.nodes_with_pruning}",
+            f"Cutoffs: {boss.pruned_nodes}",
+            f"Speedup: {boss.speedup_ratio:.2f}x",
+        )
+        for index, label in enumerate(boss_labels):
+            text_surface = font.render(label, True, HUD_TEXT_COLOR)
+            surface.blit(text_surface, (hud_x, 430 + index * 28))
 
     if outcome is MatchOutcome.VICTORY:
         banner = font.render("Victory", True, (150, 235, 155))

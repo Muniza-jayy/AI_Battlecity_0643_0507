@@ -8,8 +8,13 @@ from collections.abc import Sequence
 from config.balance import (
     ARMOR_ENEMY_DECISION_INTERVAL,
     ARMOR_ENEMY_HIT_POINTS,
+    ARMOR_ENEMY_RETREAT_DECISION_INTERVAL,
+    ARMOR_ENEMY_RETREAT_THRESHOLD,
     ARMOR_ENEMY_SPEED,
     BASIC_ENEMY_STUCK_TICKS,
+    BOSS_ENEMY_DECISION_INTERVAL,
+    BOSS_ENEMY_HIT_POINTS,
+    BOSS_ENEMY_SPEED,
     ENEMY_DECISION_INTERVAL,
     ENEMY_SPEED,
     FAST_ENEMY_DECISION_INTERVAL,
@@ -21,6 +26,7 @@ from game.ai.astar_agent import astar_path_to_eagle
 from game.ai.bfs_agent import basic_path_to_eagle, current_tile
 from game.ai.greedy_agent import greedy_path_to_eagle
 from game.ai.line_of_sight import choose_enemy_shot_direction
+from game.ai.minimax_agent import BossDecision, choose_boss_action
 from game.entities.bullet import Bullet, spawn_bullet_from_tank
 from game.entities.player import move_tank
 from game.entities.tank import Direction, Tank
@@ -43,6 +49,12 @@ class EnemyTank(Tank):
     hit_points: int = 1
     max_hit_points: int = 1
     planned_map_revision: int = -1
+    boss_phase: int = 0
+    boss_search_depth: int = 0
+    nodes_without_pruning: int = 0
+    nodes_with_pruning: int = 0
+    pruned_nodes: int = 0
+    speedup_ratio: float = 1.0
 
 
 def spawn_enemy(enemy_id: int, role: str, spawn_tile: tuple[int, int]) -> EnemyTank:
@@ -58,6 +70,10 @@ def spawn_enemy(enemy_id: int, role: str, spawn_tile: tuple[int, int]) -> EnemyT
         speed = ARMOR_ENEMY_SPEED
         decision_interval = ARMOR_ENEMY_DECISION_INTERVAL
         hit_points = ARMOR_ENEMY_HIT_POINTS
+    elif role == "boss":
+        speed = BOSS_ENEMY_SPEED
+        decision_interval = BOSS_ENEMY_DECISION_INTERVAL
+        hit_points = BOSS_ENEMY_HIT_POINTS
 
     return EnemyTank(
         x=tile_x * TILE_SIZE + TILE_SIZE / 2,
@@ -95,16 +111,71 @@ def tick_enemy_decision_timer(enemy: EnemyTank) -> bool:
     return False
 
 
-def update_basic_enemy_decision(enemy: EnemyTank, tile_map: TileMap, player: Tank) -> bool:
+def update_basic_enemy_decision(
+    enemy: EnemyTank,
+    tile_map: TileMap,
+    player: Tank,
+    player_lives: int = 1,
+) -> bool:
     """Recompute a basic tank plan and return whether it should fire."""
+    if enemy.role == "boss":
+        return update_boss_enemy_decision(enemy, tile_map, player, player_lives=player_lives)
+
     enemy.debug_path = plan_path_to_eagle(tile_map, enemy)
     enemy.desired_direction = desired_direction_from_path(enemy)
     shot_direction = choose_enemy_shot_direction(tile_map, enemy, player, tile_map.eagle_position)
     if shot_direction is not None:
         enemy.facing = shot_direction
-    enemy.frames_until_decision = enemy.decision_interval
+    if enemy.role == "armor" and enemy.hit_points <= ARMOR_ENEMY_RETREAT_THRESHOLD:
+        enemy.frames_until_decision = ARMOR_ENEMY_RETREAT_DECISION_INTERVAL
+    else:
+        enemy.frames_until_decision = enemy.decision_interval
     enemy.planned_map_revision = tile_map.revision
     return shot_direction is not None
+
+
+def update_boss_enemy_decision(
+    enemy: EnemyTank,
+    tile_map: TileMap,
+    player: Tank,
+    player_lives: int,
+) -> bool:
+    """Compute a boss action from reduced-state minimax."""
+    decision = choose_boss_action(
+        tile_map=tile_map,
+        boss_tile=current_tile(enemy),
+        player_tile=current_tile(player),
+        eagle_tile=tile_map.eagle_position,
+        boss_hp=enemy.hit_points,
+        player_lives=player_lives,
+    )
+    apply_boss_decision(enemy, decision, tile_map)
+    return decision.should_fire
+
+
+def apply_boss_decision(enemy: EnemyTank, decision: BossDecision, tile_map: TileMap) -> None:
+    enemy.desired_direction = decision.desired_direction
+    if decision.desired_direction is not None:
+        enemy.facing = decision.desired_direction
+    enemy.frames_until_decision = enemy.decision_interval
+    enemy.debug_path = [current_tile(enemy)]
+    if enemy.desired_direction is not None:
+        enemy.debug_path.append(step_direction(current_tile(enemy), enemy.desired_direction))
+    enemy.boss_search_depth = decision.search_depth
+    enemy.nodes_without_pruning = decision.nodes_without_pruning
+    enemy.nodes_with_pruning = decision.nodes_with_pruning
+    enemy.pruned_nodes = decision.pruned_nodes
+    enemy.speedup_ratio = decision.speedup_ratio
+    enemy.boss_phase = boss_phase_from_hp(enemy.hit_points)
+    enemy.planned_map_revision = tile_map.revision
+
+
+def boss_phase_from_hp(hit_points: int) -> int:
+    if hit_points > 6:
+        return 1
+    if hit_points > 3:
+        return 2
+    return 3
 
 
 def plan_path_to_eagle(tile_map: TileMap, enemy: EnemyTank) -> list[tuple[int, int]]:
@@ -175,3 +246,13 @@ def fire_enemy_bullet(enemy: EnemyTank) -> None:
     """Fire an enemy bullet if one is not already active."""
     if enemy.bullet is None:
         enemy.bullet = spawn_bullet_from_tank(enemy, owner="enemy", owner_id=enemy.enemy_id)
+
+
+def step_direction(tile: tuple[int, int], direction: Direction) -> tuple[int, int]:
+    if direction is Direction.UP:
+        return (tile[0], tile[1] - 1)
+    if direction is Direction.DOWN:
+        return (tile[0], tile[1] + 1)
+    if direction is Direction.LEFT:
+        return (tile[0] - 1, tile[1])
+    return (tile[0] + 1, tile[1])

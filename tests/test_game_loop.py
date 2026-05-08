@@ -5,7 +5,7 @@ from game.core.state import GameState, InputState, MatchOutcome
 from game.core.loop import evaluate_match_state, update_game_state
 from game.entities.player import spawn_player
 from game.entities.tank import Direction
-from game.world.map_loader import load_starter_level
+from game.world.map_loader import load_boss_level, load_starter_level
 from game.world.map_loader import build_tile_map
 from config.settings import GRID_HEIGHT, GRID_WIDTH
 
@@ -90,18 +90,40 @@ def test_evaluate_match_state_defeat_when_lives_reach_zero() -> None:
 
 
 def test_evaluate_match_state_victory_when_all_enemies_cleared() -> None:
-    tile_map = load_starter_level()
+    tile_map = load_boss_level()
     game_state = GameState(
         tile_map=tile_map,
         player=spawn_player(tile_map.player_spawn),
         enemy_count_target=3,
         enemies_remaining=0,
+        level_name="boss",
     )
 
     evaluate_match_state(game_state)
 
     assert game_state.outcome is MatchOutcome.VICTORY
     assert game_state.running is True
+
+
+def test_evaluate_match_state_transitions_starter_to_boss_level() -> None:
+    tile_map = load_starter_level()
+    game_state = GameState(
+        tile_map=tile_map,
+        player=spawn_player(tile_map.player_spawn),
+        enemy_count_target=3,
+        enemies_remaining=0,
+        level_name="starter",
+        score=200,
+        lives=2,
+    )
+
+    evaluate_match_state(game_state)
+
+    assert game_state.outcome is MatchOutcome.ACTIVE
+    assert game_state.level_name == "boss"
+    assert game_state.tile_map.width == 12
+    assert game_state.lives == 2
+    assert game_state.score == 200
 
 
 def test_evaluate_match_state_does_not_auto_win_without_enemy_target() -> None:

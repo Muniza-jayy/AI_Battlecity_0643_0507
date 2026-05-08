@@ -27,6 +27,7 @@ from game.entities.enemy import (
 from game.entities.player import move_player
 from game.entities.tank import Direction, Tank
 from game.core.state import GameState, InputState, MatchOutcome
+from game.modes.level_flow import advance_to_boss_level
 from game.ui.renderer import draw_scene
 from game.world.projectiles import BulletHit, advance_bullet
 
@@ -145,6 +146,9 @@ def evaluate_match_state(game_state: GameState) -> None:
         return
 
     if game_state.enemy_count_target > 0 and game_state.enemies_remaining <= 0:
+        if game_state.level_name == "starter":
+            advance_to_boss_level(game_state)
+            return
         game_state.outcome = MatchOutcome.VICTORY
 
 
@@ -168,6 +172,7 @@ def render_frame(
         game_state.eagle_destroyed,
         game_state.outcome,
         game_state.paused,
+        game_state.level_name,
     )
 
     window_width, window_height = window.get_size()
@@ -238,7 +243,12 @@ def update_enemies(game_state: GameState) -> None:
         if enemy_requires_replan(enemy, game_state.tile_map):
             enemy.frames_until_decision = 0
         if tick_enemy_decision_timer(enemy):
-            should_fire = update_basic_enemy_decision(enemy, game_state.tile_map, game_state.player)
+            should_fire = update_basic_enemy_decision(
+                enemy,
+                game_state.tile_map,
+                game_state.player,
+                player_lives=game_state.lives,
+            )
             if should_fire:
                 fire_enemy_bullet(enemy)
 

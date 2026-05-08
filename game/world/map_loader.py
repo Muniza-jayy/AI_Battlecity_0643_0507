@@ -2,8 +2,16 @@
 
 from __future__ import annotations
 
-from config.levels import EAGLE_POSITION, ENEMY_SPAWNS, PLAYER_SPAWN, STARTER_LEVEL_LAYOUT
-from config.settings import GRID_HEIGHT, GRID_WIDTH
+from config.levels import (
+    BOSS_EAGLE_POSITION,
+    BOSS_ENEMY_SPAWNS,
+    BOSS_LEVEL_LAYOUT,
+    BOSS_PLAYER_SPAWN,
+    EAGLE_POSITION,
+    ENEMY_SPAWNS,
+    PLAYER_SPAWN,
+    STARTER_LEVEL_LAYOUT,
+)
 from game.world.tiles import TileMap, TileType
 
 
@@ -24,18 +32,20 @@ def build_tile_map(
     enemy_spawns: tuple[tuple[int, int], ...],
     eagle_position: tuple[int, int],
 ) -> TileMap:
-    if len(layout) != GRID_HEIGHT:
-        raise ValueError(f"Expected {GRID_HEIGHT} rows, received {len(layout)}")
-    if any(len(row) != GRID_WIDTH for row in layout):
-        raise ValueError("Level rows must match the configured grid width")
+    if not layout:
+        raise ValueError("Level layout must contain at least one row")
+    width = len(layout[0])
+    if any(len(row) != width for row in layout):
+        raise ValueError("Level rows must all have the same width")
+    height = len(layout)
 
     tiles = tuple(
         tuple(TILE_SYMBOLS[symbol] for symbol in row)
         for row in layout
     )
     return TileMap(
-        width=GRID_WIDTH,
-        height=GRID_HEIGHT,
+        width=width,
+        height=height,
         tiles=tiles,
         player_spawn=player_spawn,
         enemy_spawns=enemy_spawns,
@@ -50,4 +60,14 @@ def load_starter_level() -> TileMap:
         player_spawn=PLAYER_SPAWN,
         enemy_spawns=ENEMY_SPAWNS,
         eagle_position=EAGLE_POSITION,
+    )
+
+
+def load_boss_level() -> TileMap:
+    """Return the fixed 12x12 boss arena."""
+    return build_tile_map(
+        layout=BOSS_LEVEL_LAYOUT,
+        player_spawn=BOSS_PLAYER_SPAWN,
+        enemy_spawns=BOSS_ENEMY_SPAWNS,
+        eagle_position=BOSS_EAGLE_POSITION,
     )
