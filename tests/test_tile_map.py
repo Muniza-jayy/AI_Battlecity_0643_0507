@@ -1,7 +1,7 @@
 """Early tile-map tests for Milestone 2."""
 
 from config.settings import GRID_HEIGHT, GRID_WIDTH
-from game.world.map_loader import load_boss_level, load_starter_level
+from game.world.map_loader import load_boss_level, load_starter_level, load_steel_fortress_level
 from game.world.tiles import TileType, blocks_bullets, blocks_tanks, is_destructible
 
 
@@ -34,4 +34,12 @@ def test_boss_level_uses_12_by_12_arena() -> None:
 
     assert tile_map.width == 12
     assert tile_map.height == 12
+    assert tile_map.tile_at(*tile_map.eagle_position) is TileType.EAGLE
+
+
+def test_steel_fortress_level_matches_standard_dimensions() -> None:
+    tile_map = load_steel_fortress_level()
+
+    assert tile_map.width == GRID_WIDTH
+    assert tile_map.height == GRID_HEIGHT
     assert tile_map.tile_at(*tile_map.eagle_position) is TileType.EAGLE

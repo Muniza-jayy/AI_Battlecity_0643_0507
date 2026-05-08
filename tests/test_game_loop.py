@@ -3,11 +3,13 @@
 from config.levels import STARTER_ENEMY_POOL
 from game.core.state import GameState, InputState, MatchOutcome
 from game.core.loop import evaluate_match_state, update_game_state
+from game.core.state import UISettings
 from game.entities.player import spawn_player
 from game.entities.tank import Direction
 from game.world.map_loader import load_boss_level, load_starter_level
 from game.world.map_loader import build_tile_map
 from config.settings import GRID_HEIGHT, GRID_WIDTH
+from game.modes.level_flow import BOSS_LABEL, LEVEL_2_LABEL, create_game_state_from_settings
 
 
 def empty_layout() -> list[str]:
@@ -126,6 +128,21 @@ def test_evaluate_match_state_transitions_starter_to_boss_level() -> None:
     assert game_state.score == 200
 
 
+def test_evaluate_match_state_transitions_steel_fortress_to_boss_level() -> None:
+    from game.modes.level_flow import LEVEL_2_LABEL, create_game_state_from_settings
+
+    game_state = create_game_state_from_settings(
+        UISettings(selected_level=LEVEL_2_LABEL, difficulty="Normal")
+    )
+    game_state.enemies_remaining = 0
+
+    evaluate_match_state(game_state)
+
+    assert game_state.outcome is MatchOutcome.ACTIVE
+    assert game_state.level_name == "boss"
+    assert game_state.tile_map.width == 12
+
+
 def test_evaluate_match_state_does_not_auto_win_without_enemy_target() -> None:
     tile_map = load_starter_level()
     game_state = GameState(tile_map=tile_map, player=spawn_player(tile_map.player_spawn))
@@ -162,3 +179,30 @@ def test_update_game_state_quits_from_frozen_outcome_when_requested() -> None:
     update_game_state(game_state, InputState(quit_requested=True))
 
     assert game_state.running is False
+
+
+def test_create_game_state_from_options_uses_selected_level_and_toggles() -> None:
+    settings = UISettings(
+        selected_level=LEVEL_2_LABEL,
+        debug_overlay_enabled=True,
+        path_visualization_enabled=False,
+        difficulty="Easy",
+    )
+
+    game_state = create_game_state_from_settings(settings)
+
+    assert game_state.level_name == "steel_fortress"
+    assert game_state.debug_overlay_enabled is True
+    assert game_state.path_visualization_enabled is False
+    assert game_state.difficulty == "Easy"
+    assert game_state.lives == 4
+
+
+def test_create_game_state_from_options_can_start_boss_arena_directly() -> None:
+    settings = UISettings(selected_level=BOSS_LABEL, difficulty="Hard")
+
+    game_state = create_game_state_from_settings(settings)
+
+    assert game_state.level_name == "boss"
+    assert game_state.tile_map.width == 12
+    assert game_state.enemies_remaining == 1

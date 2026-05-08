@@ -56,7 +56,9 @@ class GameState:
     enemy_count_target: int = 0
     level_name: str = "starter"
     debug_overlay_enabled: bool = False
+    path_visualization_enabled: bool = True
     generated_seed: int | None = None
+    difficulty: str = "Normal"
     outcome: MatchOutcome = MatchOutcome.ACTIVE
     paused: bool = False
     running: bool = True

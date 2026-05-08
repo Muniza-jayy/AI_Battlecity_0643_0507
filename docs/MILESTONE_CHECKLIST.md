@@ -90,7 +90,9 @@
 
 - [x] Build landing screen for `Battle City AI`
 - [x] Add subtitle: `CSP | BFS | Greedy | A* | Minimax`
-- [x] Add animated cyber/grid background
+- [x] Shift art direction to a Battle City-inspired battlefield briefing style
+- [x] Add animated tactical battlefield background
+- [x] Use dark metallic panels with brick/steel accents
 - [x] Add buttons:
 - [x] `Start Game`
 - [x] `Game Options`
@@ -99,17 +101,17 @@
 
 ### UI Milestone 3: Options screen
 
-- [ ] Add level selection:
-- [ ] `Level 1: Brick Maze`
-- [ ] `Level 2: Steel Fortress`
-- [ ] `Boss Arena`
-- [ ] Add debug overlay toggle
-- [ ] Add path visualization toggle
-- [ ] Add difficulty selection:
-- [ ] `Easy`
-- [ ] `Normal`
-- [ ] `Hard`
-- [ ] Add back button
+- [x] Add level selection:
+- [x] `Level 1: Brick Maze`
+- [x] `Level 2: Steel Fortress`
+- [x] `Boss Arena`
+- [x] Add debug overlay toggle
+- [x] Add path visualization toggle
+- [x] Add difficulty selection:
+- [x] `Easy`
+- [x] `Normal`
+- [x] `Hard`
+- [x] Add back button
 
 ### UI Milestone 4: About screen
 

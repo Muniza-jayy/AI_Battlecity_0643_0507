@@ -28,7 +28,7 @@ from game.entities.enemy import (
 from game.entities.player import move_player
 from game.entities.tank import Direction, Tank
 from game.core.state import AppScreen, AppState, GameState, InputState, MatchOutcome
-from game.modes.level_flow import advance_to_boss_level
+from game.modes.level_flow import STANDARD_PROGRESS_LEVELS, advance_to_boss_level
 from game.modes.simulation_mode import regenerate_simulation_level
 from game.ui.renderer import draw_scene
 from game.ui.screens import ScreenRouter, UIFontPack
@@ -164,7 +164,7 @@ def evaluate_match_state(game_state: GameState) -> None:
         return
 
     if game_state.enemy_count_target > 0 and game_state.enemies_remaining <= 0:
-        if game_state.level_name == "starter":
+        if game_state.level_name in STANDARD_PROGRESS_LEVELS:
             advance_to_boss_level(game_state)
             return
         game_state.outcome = MatchOutcome.VICTORY
@@ -192,6 +192,7 @@ def render_frame(
         game_state.paused,
         game_state.level_name,
         game_state.debug_overlay_enabled,
+        game_state.path_visualization_enabled,
         game_state.tile_map.revision,
         len(game_state.enemy_spawn_queue),
         game_state.generated_seed,

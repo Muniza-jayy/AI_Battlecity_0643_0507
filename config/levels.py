@@ -48,6 +48,23 @@ STARTER_ENEMY_POOL: Final[tuple[str, ...]] = (
     "armor",
 )
 
+STEEL_FORTRESS_LAYOUT: Final[list[str]] = [
+    row.replace("B", "S")
+    for row in STARTER_LEVEL_LAYOUT
+]
+
+STEEL_FORTRESS_PLAYER_SPAWN: Final[tuple[int, int]] = PLAYER_SPAWN
+STEEL_FORTRESS_ENEMY_SPAWNS: Final[tuple[tuple[int, int], ...]] = ENEMY_SPAWNS
+STEEL_FORTRESS_EAGLE_POSITION: Final[tuple[int, int]] = EAGLE_POSITION
+STEEL_FORTRESS_ENEMY_POOL: Final[tuple[str, ...]] = (
+    "basic",
+    "fast",
+    "fast",
+    "armor",
+    "armor",
+    "armor",
+)
+
 BOSS_LEVEL_LAYOUT: Final[list[str]] = [
     "............",
     "..B....S....",
@@ -71,3 +88,5 @@ BOSS_ENEMY_POOL: Final[tuple[str, ...]] = ("boss",)
 
 assert len(STARTER_LEVEL_LAYOUT) == GRID_HEIGHT
 assert all(len(row) == GRID_WIDTH for row in STARTER_LEVEL_LAYOUT)
+assert len(STEEL_FORTRESS_LAYOUT) == GRID_HEIGHT
+assert all(len(row) == GRID_WIDTH for row in STEEL_FORTRESS_LAYOUT)

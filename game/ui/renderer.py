@@ -51,6 +51,7 @@ def draw_scene(
     paused: bool,
     level_name: str,
     debug_overlay_enabled: bool = False,
+    path_visualization_enabled: bool = True,
     map_revision: int = 0,
     enemy_spawn_queue_size: int = 0,
     generated_seed: int | None = None,
@@ -64,7 +65,7 @@ def draw_scene(
     )
     render_tile_map(surface, tile_map, font)
     draw_player(surface, player)
-    draw_enemies(surface, active_enemies)
+    draw_enemies(surface, active_enemies, path_visualization_enabled=path_visualization_enabled)
     if player_bullet is not None and player_bullet.active:
         draw_bullet(surface, player_bullet)
 
@@ -140,10 +141,15 @@ def draw_bullet(surface: pygame.Surface, bullet: Bullet) -> None:
     pygame.draw.circle(surface, color, (round(bullet.x), round(bullet.y)), bullet.radius)
 
 
-def draw_enemies(surface: pygame.Surface, enemies: list[EnemyTank]) -> None:
+def draw_enemies(
+    surface: pygame.Surface,
+    enemies: list[EnemyTank],
+    path_visualization_enabled: bool = True,
+) -> None:
     """Draw active enemy tanks and any bullets they have fired."""
     for enemy in enemies:
-        draw_enemy_path(surface, enemy)
+        if path_visualization_enabled:
+            draw_enemy_path(surface, enemy)
         body_rect = pygame.Rect(0, 0, enemy.size, enemy.size)
         body_rect.center = (round(enemy.x), round(enemy.y))
         fill_color, outline_color = enemy_colors(enemy)

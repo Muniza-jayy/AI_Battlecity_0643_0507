@@ -10,6 +10,10 @@ from config.levels import (
     EAGLE_POSITION,
     ENEMY_SPAWNS,
     PLAYER_SPAWN,
+    STEEL_FORTRESS_EAGLE_POSITION,
+    STEEL_FORTRESS_ENEMY_SPAWNS,
+    STEEL_FORTRESS_LAYOUT,
+    STEEL_FORTRESS_PLAYER_SPAWN,
     STARTER_LEVEL_LAYOUT,
 )
 from game.world.tiles import TileMap, TileType
@@ -60,6 +64,16 @@ def load_starter_level() -> TileMap:
         player_spawn=PLAYER_SPAWN,
         enemy_spawns=ENEMY_SPAWNS,
         eagle_position=EAGLE_POSITION,
+    )
+
+
+def load_steel_fortress_level() -> TileMap:
+    """Return the fixed steel-heavy standard arena."""
+    return build_tile_map(
+        layout=STEEL_FORTRESS_LAYOUT,
+        player_spawn=STEEL_FORTRESS_PLAYER_SPAWN,
+        enemy_spawns=STEEL_FORTRESS_ENEMY_SPAWNS,
+        eagle_position=STEEL_FORTRESS_EAGLE_POSITION,
     )
 
 
