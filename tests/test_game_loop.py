@@ -1,7 +1,8 @@
 """Core loop tests for Milestone 3."""
 
-from game.core.state import GameState, InputState
-from game.core.loop import update_game_state
+from config.levels import STARTER_ENEMY_POOL
+from game.core.state import GameState, InputState, MatchOutcome
+from game.core.loop import evaluate_match_state, update_game_state
 from game.entities.player import spawn_player
 from game.entities.tank import Direction
 from game.world.map_loader import load_starter_level
@@ -29,7 +30,12 @@ def test_update_game_state_toggles_pause() -> None:
 
 def test_update_game_state_advances_frames_when_not_paused() -> None:
     tile_map = load_starter_level()
-    game_state = GameState(tile_map=tile_map, player=spawn_player(tile_map.player_spawn))
+    game_state = GameState(
+        tile_map=tile_map,
+        player=spawn_player(tile_map.player_spawn),
+        enemies_remaining=len(STARTER_ENEMY_POOL),
+        enemy_count_target=len(STARTER_ENEMY_POOL),
+    )
 
     update_game_state(game_state, InputState())
 
@@ -67,4 +73,68 @@ def test_update_game_state_ends_run_when_bullet_hits_eagle() -> None:
     update_game_state(game_state, InputState(fire_requested=True))
 
     assert game_state.eagle_destroyed is True
+    assert game_state.running is True
+    assert game_state.outcome is MatchOutcome.DEFEAT
+
+
+def test_evaluate_match_state_defeat_when_lives_reach_zero() -> None:
+    tile_map = load_starter_level()
+    game_state = GameState(tile_map=tile_map, player=spawn_player(tile_map.player_spawn), lives=0)
+
+    evaluate_match_state(game_state)
+
+    assert game_state.outcome is MatchOutcome.DEFEAT
+    assert game_state.running is True
+
+
+def test_evaluate_match_state_victory_when_all_enemies_cleared() -> None:
+    tile_map = load_starter_level()
+    game_state = GameState(
+        tile_map=tile_map,
+        player=spawn_player(tile_map.player_spawn),
+        enemy_count_target=3,
+        enemies_remaining=0,
+    )
+
+    evaluate_match_state(game_state)
+
+    assert game_state.outcome is MatchOutcome.VICTORY
+    assert game_state.running is True
+
+
+def test_evaluate_match_state_does_not_auto_win_without_enemy_target() -> None:
+    tile_map = load_starter_level()
+    game_state = GameState(tile_map=tile_map, player=spawn_player(tile_map.player_spawn))
+
+    evaluate_match_state(game_state)
+
+    assert game_state.outcome is MatchOutcome.ACTIVE
+    assert game_state.running is True
+
+
+def test_update_game_state_keeps_frozen_outcome_on_screen_until_quit() -> None:
+    tile_map = load_starter_level()
+    game_state = GameState(
+        tile_map=tile_map,
+        player=spawn_player(tile_map.player_spawn),
+        outcome=MatchOutcome.DEFEAT,
+    )
+
+    update_game_state(game_state, InputState())
+
+    assert game_state.outcome is MatchOutcome.DEFEAT
+    assert game_state.running is True
+    assert game_state.frame_count == 1
+
+
+def test_update_game_state_quits_from_frozen_outcome_when_requested() -> None:
+    tile_map = load_starter_level()
+    game_state = GameState(
+        tile_map=tile_map,
+        player=spawn_player(tile_map.player_spawn),
+        outcome=MatchOutcome.VICTORY,
+    )
+
+    update_game_state(game_state, InputState(quit_requested=True))
+
     assert game_state.running is False

@@ -6,6 +6,7 @@ from typing import Optional
 
 import pygame  # type: ignore[import]
 
+from config.levels import STARTER_ENEMY_POOL
 from config.settings import SCREEN_HEIGHT, SCREEN_WIDTH, WINDOW_TITLE
 from game.core.loop import create_display, run_fixed_step
 from game.core.state import GameState
@@ -25,6 +26,8 @@ def main(max_frames: Optional[int] = None) -> int:
     game_state = GameState(
         tile_map=tile_map,
         player=spawn_player(tile_map.player_spawn),
+        enemies_remaining=len(STARTER_ENEMY_POOL),
+        enemy_count_target=len(STARTER_ENEMY_POOL),
     )
 
     try:

@@ -16,6 +16,7 @@ from config.settings import (
 )
 from game.entities.bullet import Bullet
 from game.entities.tank import Direction, Tank
+from game.core.state import MatchOutcome
 from game.world.tiles import TileMap, TileType
 
 
@@ -39,6 +40,11 @@ def draw_scene(
     tile_map: TileMap,
     player: Tank,
     player_bullet: Bullet | None,
+    lives: int,
+    score: int,
+    enemies_remaining: int,
+    eagle_destroyed: bool,
+    outcome: MatchOutcome,
     paused: bool,
 ) -> None:
     """Draw the full milestone scene for the current frame."""
@@ -55,6 +61,8 @@ def draw_scene(
 
     title = font.render("Battle City AI", True, TEXT_COLOR)
     surface.blit(title, (24, 24))
+
+    draw_hud(surface, font, tile_map, lives, score, enemies_remaining, eagle_destroyed, outcome)
 
     if paused:
         pause_label = font.render("Paused", True, TEXT_COLOR)
@@ -77,22 +85,6 @@ def render_tile_map(
     for enemy_spawn in tile_map.enemy_spawns:
         _draw_spawn_marker(surface, enemy_spawn, "X")
 
-    hud_x = MAP_WIDTH + 20
-    labels = (
-        "Milestone 5",
-        "Projectiles Ready",
-        f"Grid: {tile_map.width}x{tile_map.height}",
-        f"Tile: {TILE_SIZE}px",
-        f"HUD: {HUD_WIDTH}px",
-        "P: pause",
-        "Arrows/WASD: move",
-        "Space: fire",
-    )
-    for index, label in enumerate(labels):
-        text_surface = font.render(label, True, HUD_TEXT_COLOR)
-        surface.blit(text_surface, (hud_x, 24 + index * 34))
-
-
 def draw_player(surface: pygame.Surface, player: Tank) -> None:
     """Draw the player tank body and facing marker."""
     body_rect = pygame.Rect(0, 0, player.size, player.size)
@@ -114,6 +106,42 @@ def draw_player(surface: pygame.Surface, player: Tank) -> None:
 def draw_bullet(surface: pygame.Surface, bullet: Bullet) -> None:
     """Draw an active projectile."""
     pygame.draw.circle(surface, (250, 244, 191), (round(bullet.x), round(bullet.y)), bullet.radius)
+
+
+def draw_hud(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    tile_map: TileMap,
+    lives: int,
+    score: int,
+    enemies_remaining: int,
+    eagle_destroyed: bool,
+    outcome: MatchOutcome,
+) -> None:
+    """Draw the current playable-match status in the HUD."""
+    hud_x = MAP_WIDTH + 20
+    labels = (
+        "Milestone 6",
+        "Match Rules Ready",
+        f"Lives: {lives}",
+        f"Score: {score}",
+        f"Enemies: {enemies_remaining}",
+        f"Eagle: {'Destroyed' if eagle_destroyed else 'Safe'}",
+        f"Grid: {tile_map.width}x{tile_map.height}",
+        "P: pause",
+        "Arrows/WASD: move",
+        "Space: shoot",
+    )
+    for index, label in enumerate(labels):
+        text_surface = font.render(label, True, HUD_TEXT_COLOR)
+        surface.blit(text_surface, (hud_x, 24 + index * 34))
+
+    if outcome is MatchOutcome.VICTORY:
+        banner = font.render("Victory", True, (150, 235, 155))
+        surface.blit(banner, (hud_x, SCREEN_HEIGHT - 94))
+    elif outcome is MatchOutcome.DEFEAT:
+        banner = font.render("Defeat", True, (235, 120, 120))
+        surface.blit(banner, (hud_x, SCREEN_HEIGHT - 94))
 
 
 def _draw_spawn_marker(surface: pygame.Surface, position: tuple[int, int], label: str) -> None:

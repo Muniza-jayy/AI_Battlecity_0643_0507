@@ -17,7 +17,7 @@ from config.settings import (
 from game.entities.bullet import spawn_bullet_from_tank
 from game.entities.player import move_player
 from game.entities.tank import Direction
-from game.core.state import GameState, InputState
+from game.core.state import GameState, InputState, MatchOutcome
 from game.ui.renderer import draw_scene
 from game.world.projectiles import BulletHit, advance_bullet
 
@@ -63,6 +63,8 @@ def collect_input() -> InputState:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             input_state.quit_requested = True
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
+            input_state.quit_requested = True
         elif event.type == pygame.VIDEORESIZE:
             input_state.resized_to = event.size
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_p:
@@ -89,6 +91,10 @@ def update_game_state(game_state: GameState, input_state: InputState) -> None:
         game_state.running = False
         return
 
+    if game_state.outcome is not MatchOutcome.ACTIVE:
+        game_state.frame_count += 1
+        return
+
     if input_state.toggle_pause_requested:
         game_state.paused = not game_state.paused
 
@@ -100,11 +106,22 @@ def update_game_state(game_state: GameState, input_state: InputState) -> None:
             hit = advance_bullet(game_state.player_bullet, game_state.tile_map)
             if hit is BulletHit.EAGLE:
                 game_state.eagle_destroyed = True
-                game_state.running = False
             if not game_state.player_bullet.active:
                 game_state.player_bullet = None
 
+        evaluate_match_state(game_state)
+
     game_state.frame_count += 1
+
+
+def evaluate_match_state(game_state: GameState) -> None:
+    """Resolve current win/lose conditions from the canonical game state."""
+    if game_state.eagle_destroyed or game_state.lives <= 0:
+        game_state.outcome = MatchOutcome.DEFEAT
+        return
+
+    if game_state.enemy_count_target > 0 and game_state.enemies_remaining <= 0:
+        game_state.outcome = MatchOutcome.VICTORY
 
 
 def render_frame(
@@ -120,6 +137,11 @@ def render_frame(
         game_state.tile_map,
         game_state.player,
         game_state.player_bullet,
+        game_state.lives,
+        game_state.score,
+        game_state.enemies_remaining,
+        game_state.eagle_destroyed,
+        game_state.outcome,
         game_state.paused,
     )
 

@@ -39,6 +39,14 @@ STARTER_LEVEL_LAYOUT: Final[list[str]] = [
 PLAYER_SPAWN: Final[tuple[int, int]] = (12, 25)
 ENEMY_SPAWNS: Final[tuple[tuple[int, int], ...]] = ((0, 0), (12, 0), (25, 0))
 EAGLE_POSITION: Final[tuple[int, int]] = (14, 23)
+STARTER_ENEMY_POOL: Final[tuple[str, ...]] = (
+    "basic",
+    "basic",
+    "basic",
+    "fast",
+    "fast",
+    "fast",
+)
 
 
 assert len(STARTER_LEVEL_LAYOUT) == GRID_HEIGHT

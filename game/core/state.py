@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 from game.entities.bullet import Bullet
 from game.entities.tank import Direction, Tank
@@ -20,14 +21,25 @@ class InputState:
     fire_requested: bool = False
 
 
+class MatchOutcome(StrEnum):
+    ACTIVE = "active"
+    VICTORY = "victory"
+    DEFEAT = "defeat"
+
+
 @dataclass
 class GameState:
-    """Minimal runtime state for Milestone 3."""
+    """Runtime state for the current playable match."""
 
     tile_map: TileMap
     player: Tank
     player_bullet: Bullet | None = None
     eagle_destroyed: bool = False
+    lives: int = 3
+    score: int = 0
+    enemies_remaining: int = 0
+    enemy_count_target: int = 0
+    outcome: MatchOutcome = MatchOutcome.ACTIVE
     paused: bool = False
     running: bool = True
     frame_count: int = 0
