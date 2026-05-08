@@ -17,6 +17,8 @@ from config.settings import (
     TEXT_COLOR,
     WINDOW_TITLE,
 )
+from game.ui.renderer import render_tile_map
+from game.world.map_loader import load_starter_level
 
 
 def draw_placeholder(screen: pygame.Surface, font: pygame.font.Font) -> None:
@@ -80,6 +82,7 @@ def main(max_frames: Optional[int] = None) -> int:
     scene = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
     clock = pygame.time.Clock()
     font = pygame.font.Font(None, 32)
+    tile_map = load_starter_level()
 
     frame_count = 0
     running = True
@@ -93,6 +96,7 @@ def main(max_frames: Optional[int] = None) -> int:
                     window = pygame.display.set_mode(event.size, pygame.RESIZABLE)
 
             draw_placeholder(scene, font)
+            render_tile_map(scene, tile_map, font)
 
             window_width, window_height = window.get_size()
             viewport = compute_letterbox(
