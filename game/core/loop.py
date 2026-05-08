@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+import random
 from typing import Optional
 
 import pygame  # type: ignore[import]
@@ -28,6 +29,7 @@ from game.entities.player import move_player
 from game.entities.tank import Direction, Tank
 from game.core.state import GameState, InputState, MatchOutcome
 from game.modes.level_flow import advance_to_boss_level
+from game.modes.simulation_mode import regenerate_simulation_level
 from game.ui.renderer import draw_scene
 from game.world.projectiles import BulletHit, advance_bullet
 
@@ -81,6 +83,10 @@ def collect_input() -> InputState:
             input_state.toggle_pause_requested = True
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_SPACE:
             input_state.fire_requested = True
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_F1:
+            input_state.toggle_debug_overlay_requested = True
+        elif event.type == pygame.KEYDOWN and event.key == pygame.K_F5:
+            input_state.regenerate_map_requested = True
 
     pressed = pygame.key.get_pressed()
     if pressed[pygame.K_UP] or pressed[pygame.K_w]:
@@ -100,6 +106,12 @@ def update_game_state(game_state: GameState, input_state: InputState) -> None:
     if input_state.quit_requested:
         game_state.running = False
         return
+
+    if input_state.toggle_debug_overlay_requested:
+        game_state.debug_overlay_enabled = not game_state.debug_overlay_enabled
+
+    if input_state.regenerate_map_requested:
+        regenerate_simulation_level(game_state, seed=random.randint(1, 999_999))
 
     if game_state.outcome is not MatchOutcome.ACTIVE:
         game_state.frame_count += 1
@@ -173,6 +185,10 @@ def render_frame(
         game_state.outcome,
         game_state.paused,
         game_state.level_name,
+        game_state.debug_overlay_enabled,
+        game_state.tile_map.revision,
+        len(game_state.enemy_spawn_queue),
+        game_state.generated_seed,
     )
 
     window_width, window_height = window.get_size()

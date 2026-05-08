@@ -18,6 +18,7 @@ from game.entities.bullet import Bullet
 from game.entities.enemy import EnemyTank
 from game.entities.tank import Direction, Tank
 from game.core.state import MatchOutcome
+from game.ui.debug_overlay import draw_debug_overlay
 from game.world.tiles import TileMap, TileType
 
 
@@ -49,6 +50,10 @@ def draw_scene(
     outcome: MatchOutcome,
     paused: bool,
     level_name: str,
+    debug_overlay_enabled: bool = False,
+    map_revision: int = 0,
+    enemy_spawn_queue_size: int = 0,
+    generated_seed: int | None = None,
 ) -> None:
     """Draw the full milestone scene for the current frame."""
     surface.fill(BACKGROUND_COLOR)
@@ -78,6 +83,17 @@ def draw_scene(
         active_enemies,
         level_name,
     )
+
+    if debug_overlay_enabled:
+        draw_debug_overlay(
+            surface,
+            font,
+            level_name=level_name,
+            map_revision=map_revision,
+            active_enemies=active_enemies,
+            enemy_spawn_queue_size=enemy_spawn_queue_size,
+            generated_seed=generated_seed,
+        )
 
     if paused:
         pause_label = font.render("Paused", True, TEXT_COLOR)

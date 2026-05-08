@@ -20,6 +20,8 @@ class InputState:
     resized_to: tuple[int, int] | None = None
     movement_direction: Direction | None = None
     fire_requested: bool = False
+    toggle_debug_overlay_requested: bool = False
+    regenerate_map_requested: bool = False
 
 
 class MatchOutcome(StrEnum):
@@ -44,6 +46,8 @@ class GameState:
     enemies_remaining: int = 0
     enemy_count_target: int = 0
     level_name: str = "starter"
+    debug_overlay_enabled: bool = False
+    generated_seed: int | None = None
     outcome: MatchOutcome = MatchOutcome.ACTIVE
     paused: bool = False
     running: bool = True
