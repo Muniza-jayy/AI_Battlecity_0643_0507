@@ -27,10 +27,11 @@ from game.entities.enemy import (
 )
 from game.entities.player import move_player
 from game.entities.tank import Direction, Tank
-from game.core.state import GameState, InputState, MatchOutcome
+from game.core.state import AppScreen, AppState, GameState, InputState, MatchOutcome
 from game.modes.level_flow import advance_to_boss_level
 from game.modes.simulation_mode import regenerate_simulation_level
 from game.ui.renderer import draw_scene
+from game.ui.screens import ScreenRouter, UIFontPack
 from game.world.projectiles import BulletHit, advance_bullet
 
 
@@ -68,11 +69,11 @@ def create_display(max_frames: Optional[int]) -> pygame.Surface:
     return pygame.display.set_mode((SCREEN_WIDTH, SCREEN_HEIGHT), flags)
 
 
-def collect_input() -> InputState:
-    """Read input events for the current frame."""
+def build_input_state(events: list[pygame.event.Event]) -> InputState:
+    """Build an input snapshot from a provided event batch."""
     input_state = InputState()
 
-    for event in pygame.event.get():
+    for event in events:
         if event.type == pygame.QUIT:
             input_state.quit_requested = True
         elif event.type == pygame.KEYDOWN and event.key == pygame.K_ESCAPE:
@@ -99,6 +100,11 @@ def collect_input() -> InputState:
         input_state.movement_direction = Direction.RIGHT
 
     return input_state
+
+
+def collect_input() -> InputState:
+    """Read input events for the current frame."""
+    return build_input_state(list(pygame.event.get()))
 
 
 def update_game_state(game_state: GameState, input_state: InputState) -> None:
@@ -226,6 +232,62 @@ def run_fixed_step(
         clock.tick(FPS)
         if max_frames is not None and game_state.frame_count >= max_frames:
             game_state.running = False
+
+    return 0
+
+
+def run_application_loop(
+    window: pygame.Surface,
+    scene: pygame.Surface,
+    fonts: UIFontPack,
+    app_state: AppState,
+    max_frames: Optional[int] = None,
+) -> int:
+    """Run the top-level application loop with screen routing."""
+    clock = pygame.time.Clock()
+    router = ScreenRouter()
+    app_frame_count = 0
+
+    while app_state.running:
+        dt_ms = clock.tick(FPS)
+        events = list(pygame.event.get())
+        if any(event.type == pygame.QUIT for event in events):
+            app_state.running = False
+            break
+
+        resized = next((event.size for event in events if event.type == pygame.VIDEORESIZE), None)
+        if resized is not None:
+            window = pygame.display.set_mode(resized, pygame.RESIZABLE)
+
+        active_screen = router.current(app_state)
+        if active_screen is not None:
+            for event in events:
+                active_screen.handle_event(event, app_state)
+            active_screen.update(app_state, dt_ms)
+            active_screen.draw(scene, fonts, app_state)
+        else:
+            if app_state.game_state is None:
+                raise RuntimeError("PLAYING state requires an active GameState")
+            input_state = build_input_state(events)
+            update_game_state(app_state.game_state, input_state)
+            if input_state.quit_requested:
+                app_state.running = False
+            render_frame(window, scene, fonts.body, app_state.game_state)
+            if app_state.game_state.outcome is not MatchOutcome.ACTIVE:
+                app_state.current_screen = AppScreen.GAME_OVER
+
+        if active_screen is not None:
+            window_width, window_height = window.get_size()
+            viewport = compute_letterbox(SCREEN_WIDTH, SCREEN_HEIGHT, window_width, window_height)
+            window.fill(BACKGROUND_COLOR)
+            scaled_scene = pygame.transform.smoothscale(scene, viewport.size)
+            window.blit(scaled_scene, viewport.topleft)
+            pygame.display.flip()
+
+        if max_frames is not None:
+            app_frame_count += 1
+            if app_frame_count >= max_frames:
+                app_state.running = False
 
     return 0
 

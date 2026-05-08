@@ -30,6 +30,15 @@ class MatchOutcome(StrEnum):
     DEFEAT = "defeat"
 
 
+class AppScreen(StrEnum):
+    WELCOME = "welcome"
+    OPTIONS = "options"
+    ABOUT = "about"
+    PLAYING = "playing"
+    PAUSED = "paused"
+    GAME_OVER = "game_over"
+
+
 @dataclass
 class GameState:
     """Runtime state for the current playable match."""
@@ -52,3 +61,23 @@ class GameState:
     paused: bool = False
     running: bool = True
     frame_count: int = 0
+
+
+@dataclass
+class UISettings:
+    """User-facing UI and play configuration."""
+
+    selected_level: str = "Level 1: Brick Maze"
+    debug_overlay_enabled: bool = False
+    path_visualization_enabled: bool = True
+    difficulty: str = "Normal"
+
+
+@dataclass
+class AppState:
+    """Top-level application state for screen routing."""
+
+    current_screen: AppScreen = AppScreen.WELCOME
+    running: bool = True
+    game_state: GameState | None = None
+    ui_settings: UISettings = field(default_factory=UISettings)

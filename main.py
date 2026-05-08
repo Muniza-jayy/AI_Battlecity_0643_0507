@@ -7,8 +7,10 @@ from typing import Optional
 import pygame  # type: ignore[import]
 
 from config.settings import SCREEN_HEIGHT, SCREEN_WIDTH, WINDOW_TITLE
-from game.core.loop import create_display, run_fixed_step
+from game.core.loop import create_display, run_application_loop
+from game.core.state import AppState
 from game.modes.level_flow import create_starter_game_state
+from game.ui.screens import UIFontPack
 
 
 def main(max_frames: Optional[int] = None) -> int:
@@ -18,13 +20,23 @@ def main(max_frames: Optional[int] = None) -> int:
 
     window = create_display(max_frames)
     scene = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
-    font = pygame.font.Font(None, 32)
-    game_state = create_starter_game_state()
+    fonts = build_fonts()
+    app_state = AppState(game_state=create_starter_game_state())
 
     try:
-        return run_fixed_step(window, scene, font, game_state, max_frames=max_frames)
+        return run_application_loop(window, scene, fonts, app_state, max_frames=max_frames)
     finally:
         pygame.quit()
+
+
+def build_fonts() -> UIFontPack:
+    """Create the font pack used by the screen system."""
+    title = pygame.font.SysFont("Avenir Next,Helvetica Neue,Arial", 72, bold=True)
+    subtitle = pygame.font.SysFont("Menlo,Monaco,Courier New", 26, bold=False)
+    body = pygame.font.SysFont("Avenir Next,Helvetica Neue,Arial", 32)
+    button = pygame.font.SysFont("Avenir Next,Helvetica Neue,Arial", 28, bold=True)
+    small = pygame.font.SysFont("Menlo,Monaco,Courier New", 18)
+    return UIFontPack(title=title, subtitle=subtitle, body=body, button=button, small=small)
 
 
 if __name__ == "__main__":

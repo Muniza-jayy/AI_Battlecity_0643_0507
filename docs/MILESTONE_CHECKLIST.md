@@ -76,3 +76,59 @@
 - [ ] Add simulation/debug mode
 - [ ] Add optional debug overlay for paths and AI labels
 - [ ] Add automated tests for collision, pathfinding, and map validity
+
+## UI/UX Phase
+
+### UI Milestone 1: App screen system
+
+- [x] Add app-level screen enum/state
+- [x] Separate `WELCOME`, `OPTIONS`, `ABOUT`, `PLAYING`, `PAUSED`, `GAME_OVER`
+- [x] Move screen routing out of `main.py`
+- [x] Keep gameplay loop reusable under `PLAYING`
+
+### UI Milestone 2: Welcome screen
+
+- [x] Build landing screen for `Battle City AI`
+- [x] Add subtitle: `CSP | BFS | Greedy | A* | Minimax`
+- [x] Add animated cyber/grid background
+- [x] Add buttons:
+- [x] `Start Game`
+- [x] `Game Options`
+- [x] `About Project`
+- [x] `Quit`
+
+### UI Milestone 3: Options screen
+
+- [ ] Add level selection:
+- [ ] `Level 1: Brick Maze`
+- [ ] `Level 2: Steel Fortress`
+- [ ] `Boss Arena`
+- [ ] Add debug overlay toggle
+- [ ] Add path visualization toggle
+- [ ] Add difficulty selection:
+- [ ] `Easy`
+- [ ] `Normal`
+- [ ] `Hard`
+- [ ] Add back button
+
+### UI Milestone 4: About screen
+
+- [ ] Add AI Lab project summary
+- [ ] Add tank-to-algorithm mapping
+- [ ] Add back button
+- [ ] Polish presentation panel styling
+
+### UI Milestone 5: Playing / pause / game-over UX
+
+- [ ] Add proper pause overlay
+- [ ] Add styled game-over / victory states
+- [ ] Add screen transitions between gameplay and UI states
+- [ ] Preserve existing game logic under screen routing
+
+### UI Milestone 6: Visual polish pass
+
+- [ ] Tune typography hierarchy
+- [ ] Unify neon palette and panel language
+- [ ] Improve hover/press feedback
+- [ ] Refine animation timing
+- [ ] Clean up resize/layout behavior
