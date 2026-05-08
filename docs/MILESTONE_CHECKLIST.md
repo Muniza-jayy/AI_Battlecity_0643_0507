@@ -122,10 +122,10 @@
 
 ### UI Milestone 5: Playing / pause / game-over UX
 
-- [ ] Add proper pause overlay
-- [ ] Add styled game-over / victory states
-- [ ] Add screen transitions between gameplay and UI states
-- [ ] Preserve existing game logic under screen routing
+- [x] Add proper pause overlay
+- [x] Add styled game-over / victory states
+- [x] Add screen transitions between gameplay and UI states
+- [x] Preserve existing game logic under screen routing
 
 ### UI Milestone 6: Visual polish pass
 

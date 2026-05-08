@@ -102,6 +102,43 @@ def build_input_state(events: list[pygame.event.Event]) -> InputState:
     return input_state
 
 
+def remap_events_to_scene(events: list[pygame.event.Event], viewport: pygame.Rect) -> list[pygame.event.Event]:
+    """Convert window-space mouse events into fixed-scene coordinates."""
+    remapped: list[pygame.event.Event] = []
+    scale_x = SCREEN_WIDTH / max(1, viewport.width)
+    scale_y = SCREEN_HEIGHT / max(1, viewport.height)
+    for event in events:
+        if event.type not in {pygame.MOUSEMOTION, pygame.MOUSEBUTTONDOWN, pygame.MOUSEBUTTONUP}:
+            remapped.append(event)
+            continue
+
+        pos = getattr(event, "pos", None)
+        if pos is None:
+            remapped.append(event)
+            continue
+
+        scene_pos = scene_point_from_window_point(pos, viewport, scale_x, scale_y)
+        if event.type == pygame.MOUSEMOTION:
+            rel = getattr(event, "rel", (0, 0))
+            remapped.append(pygame.event.Event(event.type, {"pos": scene_pos, "rel": rel, "buttons": event.buttons}))
+        else:
+            remapped.append(pygame.event.Event(event.type, {"pos": scene_pos, "button": event.button}))
+    return remapped
+
+
+def scene_point_from_window_point(
+    pos: tuple[int, int],
+    viewport: pygame.Rect,
+    scale_x: float,
+    scale_y: float,
+) -> tuple[int, int]:
+    if not viewport.collidepoint(pos):
+        return (-10_000, -10_000)
+    scene_x = int((pos[0] - viewport.x) * scale_x)
+    scene_y = int((pos[1] - viewport.y) * scale_y)
+    return (scene_x, scene_y)
+
+
 def collect_input() -> InputState:
     """Read input events for the current frame."""
     return build_input_state(list(pygame.event.get()))
@@ -260,9 +297,13 @@ def run_application_loop(
         if resized is not None:
             window = pygame.display.set_mode(resized, pygame.RESIZABLE)
 
+        window_width, window_height = window.get_size()
+        viewport = compute_letterbox(SCREEN_WIDTH, SCREEN_HEIGHT, window_width, window_height)
+        scene_events = remap_events_to_scene(events, viewport)
+
         active_screen = router.current(app_state)
         if active_screen is not None:
-            for event in events:
+            for event in scene_events:
                 active_screen.handle_event(event, app_state)
             active_screen.update(app_state, dt_ms)
             active_screen.draw(scene, fonts, app_state)
@@ -273,13 +314,13 @@ def run_application_loop(
             update_game_state(app_state.game_state, input_state)
             if input_state.quit_requested:
                 app_state.running = False
+            if app_state.game_state.paused:
+                app_state.current_screen = AppScreen.PAUSED
             render_frame(window, scene, fonts.body, app_state.game_state)
             if app_state.game_state.outcome is not MatchOutcome.ACTIVE:
                 app_state.current_screen = AppScreen.GAME_OVER
 
         if active_screen is not None:
-            window_width, window_height = window.get_size()
-            viewport = compute_letterbox(SCREEN_WIDTH, SCREEN_HEIGHT, window_width, window_height)
             window.fill(BACKGROUND_COLOR)
             scaled_scene = pygame.transform.smoothscale(scene, viewport.size)
             window.blit(scaled_scene, viewport.topleft)

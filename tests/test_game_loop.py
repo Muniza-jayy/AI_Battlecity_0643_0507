@@ -2,7 +2,9 @@
 
 from config.levels import STARTER_ENEMY_POOL
 from game.core.state import GameState, InputState, MatchOutcome
-from game.core.loop import evaluate_match_state, update_game_state
+import pygame  # type: ignore[import]
+
+from game.core.loop import evaluate_match_state, scene_point_from_window_point, update_game_state
 from game.core.state import UISettings
 from game.entities.player import spawn_player
 from game.entities.tank import Direction
@@ -179,6 +181,24 @@ def test_update_game_state_quits_from_frozen_outcome_when_requested() -> None:
     update_game_state(game_state, InputState(quit_requested=True))
 
     assert game_state.running is False
+
+
+def test_scene_point_from_window_point_maps_letterboxed_mouse_to_scene() -> None:
+    viewport = pygame.Rect(100, 50, 556, 416)
+    scale_x = 1112 / 556
+    scale_y = 832 / 416
+
+    point = scene_point_from_window_point((378, 258), viewport, scale_x, scale_y)
+
+    assert point == (556, 416)
+
+
+def test_scene_point_from_window_point_rejects_clicks_outside_viewport() -> None:
+    viewport = pygame.Rect(100, 50, 556, 416)
+
+    point = scene_point_from_window_point((50, 40), viewport, 2.0, 2.0)
+
+    assert point == (-10_000, -10_000)
 
 
 def test_create_game_state_from_options_uses_selected_level_and_toggles() -> None:

@@ -60,7 +60,7 @@ class WelcomeScreen:
             ("Start Operation", AMBER, AppScreen.PLAYING),
             ("Battle Options", OLIVE, AppScreen.OPTIONS),
             ("Project Brief", STEEL_LIGHT, AppScreen.ABOUT),
-            ("Stand Down", WARNING, AppScreen.GAME_OVER),
+            ("Quit", WARNING, AppScreen.GAME_OVER),
         ]
         self.buttons = []
         for index, (label, accent, target) in enumerate(actions):
@@ -479,12 +479,105 @@ class GameOverScreen:
 
 
 @dataclass
+class PauseScreen:
+    """Paused-match control screen."""
+
+    resume_button: Button = field(init=False)
+    retry_button: Button = field(init=False)
+    back_button: Button = field(init=False)
+
+    def __post_init__(self) -> None:
+        self.resume_button = Button(
+            label="Resume",
+            rect=pygame.Rect(SCREEN_WIDTH // 2 - 210, 356, 420, 56),
+            on_click=lambda: None,
+            accent_color=AMBER,
+            hover_color=(50, 46, 40),
+        )
+        self.retry_button = Button(
+            label="Restart Mission",
+            rect=pygame.Rect(SCREEN_WIDTH // 2 - 210, 430, 420, 56),
+            on_click=lambda: None,
+            accent_color=OLIVE,
+            hover_color=(50, 46, 40),
+        )
+        self.back_button = Button(
+            label="Back to Menu",
+            rect=pygame.Rect(SCREEN_WIDTH // 2 - 210, 504, 420, 56),
+            on_click=lambda: None,
+            accent_color=STEEL_LIGHT,
+            hover_color=(50, 46, 40),
+        )
+
+    def handle_event(self, event: pygame.event.Event, app_state: AppState) -> None:
+        if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
+            self._resume(app_state)
+            return
+        self.resume_button.on_click = lambda app_state=app_state: self._resume(app_state)
+        self.retry_button.on_click = lambda app_state=app_state: self._retry(app_state)
+        self.back_button.on_click = lambda app_state=app_state: self._back_to_menu(app_state)
+        self.resume_button.handle_event(event)
+        self.retry_button.handle_event(event)
+        self.back_button.handle_event(event)
+
+    def update(self, app_state: AppState, dt_ms: int) -> None:
+        return
+
+    def draw(self, surface: pygame.Surface, fonts: UIFontPack, app_state: AppState) -> None:
+        draw_battlefield_background(surface, 0.0)
+        panel = Panel(
+            pygame.Rect(SCREEN_WIDTH // 2 - 280, 118, 560, 540),
+            border_color=AMBER,
+            fill_color=(26, 24, 24, 228),
+        )
+        panel.draw(surface)
+        draw_brick_header_band(surface, panel.rect)
+
+        title = fonts.title.render("Mission Paused", True, SOFT_TEXT)
+        subtitle = fonts.small.render("TACTICAL HOLD", True, AMBER)
+        surface.blit(subtitle, subtitle.get_rect(center=(SCREEN_WIDTH // 2, 186)))
+        surface.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, 246)))
+
+        if app_state.game_state is not None:
+            info = (
+                f"Level: {app_state.game_state.level_name}",
+                f"Score: {app_state.game_state.score}",
+                f"Lives Remaining: {app_state.game_state.lives}",
+            )
+            for index, line in enumerate(info):
+                text = fonts.body.render(line, True, MUTED_TEXT)
+                surface.blit(text, text.get_rect(center=(SCREEN_WIDTH // 2, 330 + index * 42)))
+
+        self.resume_button.draw(surface, fonts.button)
+        self.retry_button.draw(surface, fonts.button)
+        self.back_button.draw(surface, fonts.button)
+
+    @staticmethod
+    def _resume(app_state: AppState) -> None:
+        if app_state.game_state is not None:
+            app_state.game_state.paused = False
+        app_state.current_screen = AppScreen.PLAYING
+
+    @staticmethod
+    def _retry(app_state: AppState) -> None:
+        app_state.game_state = create_game_state_from_settings(app_state.ui_settings)
+        app_state.current_screen = AppScreen.PLAYING
+
+    @staticmethod
+    def _back_to_menu(app_state: AppState) -> None:
+        if app_state.game_state is not None:
+            app_state.game_state.paused = False
+        app_state.current_screen = AppScreen.WELCOME
+
+
+@dataclass
 class ScreenRouter:
     """Owns screen objects and routes draw/update calls by state."""
 
     welcome: WelcomeScreen = field(default_factory=WelcomeScreen)
     options: OptionsScreen = field(default_factory=OptionsScreen)
     about: AboutScreen = field(default_factory=AboutScreen)
+    paused: PauseScreen = field(default_factory=PauseScreen)
     game_over: GameOverScreen = field(default_factory=GameOverScreen)
 
     def current(self, app_state: AppState) -> Screen | None:
@@ -493,7 +586,7 @@ class ScreenRouter:
             AppScreen.OPTIONS: self.options,
             AppScreen.ABOUT: self.about,
             AppScreen.PLAYING: None,
-            AppScreen.PAUSED: None,
+            AppScreen.PAUSED: self.paused,
             AppScreen.GAME_OVER: self.game_over,
         }
         return mapping[app_state.current_screen]
