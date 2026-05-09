@@ -34,6 +34,9 @@ TILE_COLORS: dict[TileType, tuple[int, int, int]] = {
 
 SPAWN_COLOR = (230, 230, 230)
 HUD_TEXT_COLOR = (240, 240, 240)
+HUD_MUTED_TEXT = (176, 170, 154)
+HUD_PANEL_FILL = (18, 18, 22)
+HUD_PANEL_BORDER = (118, 88, 48)
 
 
 def draw_scene(
@@ -217,23 +220,34 @@ def draw_hud(
     """Draw the current playable-match status in the HUD."""
     hud_x = MAP_WIDTH + 20
     boss = next((enemy for enemy in active_enemies if enemy.role == "boss"), None)
+    header_rect = pygame.Rect(MAP_WIDTH + 12, 16, SCREEN_WIDTH - MAP_WIDTH - 24, 162)
+    detail_rect = pygame.Rect(MAP_WIDTH + 12, 194, SCREEN_WIDTH - MAP_WIDTH - 24, 214)
+    command_rect = pygame.Rect(MAP_WIDTH + 12, 422, SCREEN_WIDTH - MAP_WIDTH - 24, 166)
+    for rect in (header_rect, detail_rect, command_rect):
+        pygame.draw.rect(surface, HUD_PANEL_FILL, rect, border_radius=12)
+        pygame.draw.rect(surface, HUD_PANEL_BORDER, rect, width=2, border_radius=12)
+
     labels = (
-        "Milestone 9",
-        "Boss Level Ready",
+        "TACTICAL STATUS",
+        "BATTLEFIELD CONTROL",
         f"Level: {level_name}",
         f"Lives: {lives}",
         f"Score: {score}",
         f"Enemies: {enemies_remaining}",
         f"On map: {len(active_enemies)}",
         f"Eagle: {'Destroyed' if eagle_destroyed else 'Safe'}",
-        f"Grid: {tile_map.width}x{tile_map.height}",
-        "P: pause",
+        "Map: urban battlefield",
+        "Menu: Esc / Menu button",
         "Arrows/WASD: move",
         "Space: shoot",
     )
     for index, label in enumerate(labels):
-        text_surface = font.render(label, True, HUD_TEXT_COLOR)
-        surface.blit(text_surface, (hud_x, 24 + index * 34))
+        color = HUD_TEXT_COLOR if index < 2 else HUD_MUTED_TEXT
+        text_surface = font.render(label, True, color)
+        if index < 6:
+            surface.blit(text_surface, (hud_x, 28 + index * 24))
+        else:
+            surface.blit(text_surface, (hud_x, 224 + (index - 6) * 30))
 
     if boss is not None:
         boss_labels = (
@@ -247,14 +261,14 @@ def draw_hud(
         )
         for index, label in enumerate(boss_labels):
             text_surface = font.render(label, True, HUD_TEXT_COLOR)
-            surface.blit(text_surface, (hud_x, 430 + index * 28))
+            surface.blit(text_surface, (hud_x, 448 + index * 22))
 
     if outcome is MatchOutcome.VICTORY:
         banner = font.render("Victory", True, (150, 235, 155))
-        surface.blit(banner, (hud_x, SCREEN_HEIGHT - 94))
+        surface.blit(banner, (hud_x, SCREEN_HEIGHT - 104))
     elif outcome is MatchOutcome.DEFEAT:
         banner = font.render("Defeat", True, (235, 120, 120))
-        surface.blit(banner, (hud_x, SCREEN_HEIGHT - 94))
+        surface.blit(banner, (hud_x, SCREEN_HEIGHT - 104))
 
 
 def draw_eagle_fortification(surface: pygame.Surface, tile_map: TileMap) -> None:

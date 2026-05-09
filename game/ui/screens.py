@@ -679,16 +679,16 @@ def draw_tactical_preview(surface: pygame.Surface, rect: pygame.Rect, pulse: flo
     panel = Panel(rect, fill_color=(21, 24, 27, 224), border_color=STEEL)
     panel.draw(surface)
     inner = rect.inflate(-28, -28)
-    pygame.draw.rect(surface, (17, 19, 20), inner, border_radius=10)
+    pygame.draw.rect(surface, (3, 3, 5), inner, border_radius=10)
     cell = 28
     for gy in range(0, max(1, inner.height // cell)):
         for gx in range(0, max(1, inner.width // cell)):
             draw_preview_tile(surface, inner, gx, gy, TileType.EMPTY, cell)
 
-    bricks = [(1, 1), (2, 1), (6, 2), (7, 2), (5, 5), (6, 5), (8, 7), (2, 8)]
-    steels = [(4, 2), (4, 3), (9, 4), (3, 7)]
-    waters = [(1, 6), (2, 6), (7, 8)]
-    forests = [(9, 1), (10, 1), (10, 6), (2, 9)]
+    bricks = [(1, 1), (2, 1), (3, 1), (7, 2), (8, 2), (5, 6), (6, 6), (7, 6), (2, 9), (3, 9)]
+    steels = [(5, 2), (5, 3), (9, 3), (9, 4), (10, 4)]
+    waters = [(1, 6), (2, 6), (1, 7), (2, 7), (8, 8), (9, 8), (8, 9), (9, 9)]
+    forests = [(10, 1), (11, 1), (10, 2), (11, 2), (3, 7), (4, 7), (3, 8), (4, 8)]
     for gx, gy in bricks:
         draw_preview_tile(surface, inner, gx, gy, TileType.BRICK, cell)
     for gx, gy in steels:
@@ -698,12 +698,15 @@ def draw_tactical_preview(surface: pygame.Surface, rect: pygame.Rect, pulse: flo
     for gx, gy in forests:
         draw_preview_tile(surface, inner, gx, gy, TileType.FOREST, cell)
 
-    player_center = (inner.x + cell * 3 + 14 + int(pulse * 8) % (cell * 3), inner.y + cell * 9 + cell // 2)
-    enemy_center = (inner.right - 42 - (int(pulse * 10) % (cell * 3)), inner.y + cell * 2 + cell // 2)
+    for gx, gy in ((5, 8), (4, 9), (6, 9), (4, 10), (6, 10)):
+        draw_preview_tile(surface, inner, gx, gy, TileType.BRICK, cell)
+
+    player_center = (inner.x + cell * 2 + 18 + int(pulse * 8) % (cell * 4), inner.y + cell * 9 + cell // 2)
+    enemy_center = (inner.right - 56 - (int(pulse * 10) % (cell * 4)), inner.y + cell * 2 + cell // 2)
     eagle_tile = pygame.Rect(inner.x + cell * 5 + 4, inner.y + cell * 9 + 4, cell - 8, cell - 8)
     surface.blit(tile_texture(TileType.EAGLE, size=cell - 8), eagle_tile)
-    draw_preview_tank(surface, player_center, "player", Direction.RIGHT, 30)
-    draw_preview_tank(surface, enemy_center, "basic", Direction.LEFT, 30)
+    draw_preview_tank(surface, player_center, "player", Direction.RIGHT, 40)
+    draw_preview_tank(surface, enemy_center, "armor", Direction.LEFT, 40)
 
     sweep_x = inner.x + int((pulse * 32) % max(1, inner.width))
     pygame.draw.line(surface, (*AMBER, 120), (sweep_x, inner.y), (sweep_x - 48, inner.bottom), width=2)
@@ -719,7 +722,6 @@ def draw_preview_tile(
 ) -> None:
     rect = pygame.Rect(inner.x + gx * cell + 4, inner.y + gy * cell + 4, cell - 8, cell - 8)
     surface.blit(tile_texture(tile_type, size=cell - 8), rect)
-    pygame.draw.rect(surface, (36, 38, 40), rect, width=1, border_radius=2)
 
 
 def draw_preview_tank(
@@ -731,24 +733,29 @@ def draw_preview_tank(
 ) -> None:
     sprite = tank_sprite(role, facing, size)
     rect = sprite.get_rect(center=center)
+    shadow = pygame.Surface(sprite.get_size(), pygame.SRCALPHA)
+    shadow.fill((0, 0, 0, 55))
+    surface.blit(shadow, rect.move(1, 2))
     surface.blit(sprite, rect)
-    pygame.draw.rect(surface, (18, 20, 22), rect, width=1, border_radius=2)
 
 
 def draw_status_card(surface: pygame.Surface, fonts: UIFontPack, rect: pygame.Rect) -> None:
     panel = Panel(rect, fill_color=(24, 26, 29, 226), border_color=BRICK)
     panel.draw(surface)
     title = fonts.subtitle.render("BATTLEFIELD BRIEF", True, SOFT_TEXT)
-    lines = (
-        "Primary objective: Defend the Eagle",
-        "Threat classes: Basic / Fast / Armor / Boss",
-        "Algorithms are visible through battlefield behavior",
-        "Mission tone: tactical, grounded, arcade warfare",
-    )
     surface.blit(title, (rect.x + 24, rect.y + 22))
-    for index, line in enumerate(lines):
-        text = fonts.small.render(line, True, MUTED_TEXT)
-        surface.blit(text, (rect.x + 26, rect.y + 76 + index * 32))
+    draw_wrapped_text(
+        surface,
+        fonts.small,
+        (
+            "Primary objective: defend the Eagle.\n"
+            "Terrain clusters now read as brick blocks, steel walls, tree cover, and water obstacles.\n"
+            "Enemy armor classes remain readable through silhouette, color, and movement role."
+        ),
+        MUTED_TEXT,
+        pygame.Rect(rect.x + 24, rect.y + 74, rect.width - 48, rect.height - 98),
+        line_gap=5,
+    )
 
 
 def style_selection_button(button: Button, selected: bool) -> None:
