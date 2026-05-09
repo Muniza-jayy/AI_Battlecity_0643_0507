@@ -37,6 +37,13 @@ def test_boss_level_uses_12_by_12_arena() -> None:
     assert tile_map.tile_at(*tile_map.eagle_position) is TileType.EAGLE
 
 
+def test_boss_spawn_tile_remains_open() -> None:
+    tile_map = load_boss_level()
+    spawn_x, spawn_y = tile_map.enemy_spawns[0]
+
+    assert tile_map.tile_at(spawn_x, spawn_y) is TileType.EMPTY
+
+
 def test_steel_fortress_level_matches_standard_dimensions() -> None:
     tile_map = load_steel_fortress_level()
 

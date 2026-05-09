@@ -31,6 +31,7 @@ class MatchOutcome(StrEnum):
 
 
 class AppScreen(StrEnum):
+    SPLASH = "splash"
     WELCOME = "welcome"
     OPTIONS = "options"
     ABOUT = "about"
@@ -79,7 +80,7 @@ class UISettings:
 class AppState:
     """Top-level application state for screen routing."""
 
-    current_screen: AppScreen = AppScreen.WELCOME
+    current_screen: AppScreen = AppScreen.SPLASH
     running: bool = True
     game_state: GameState | None = None
     ui_settings: UISettings = field(default_factory=UISettings)

@@ -12,9 +12,9 @@ def test_boss_spawn_uses_expected_stats() -> None:
     boss = spawn_enemy(1, "boss", tile_map.enemy_spawns[0])
 
     assert boss.role == "boss"
-    assert boss.hit_points == 10
-    assert boss.max_hit_points == 10
-    assert boss.decision_interval == 10
+    assert boss.hit_points == 8
+    assert boss.max_hit_points == 8
+    assert boss.decision_interval == 14
 
 
 def test_boss_phase_depth_matches_prd_thresholds() -> None:

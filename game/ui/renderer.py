@@ -4,16 +4,7 @@ from __future__ import annotations
 
 import pygame  # type: ignore[import]
 
-from config.settings import (
-    BACKGROUND_COLOR,
-    HUD_BACKGROUND_COLOR,
-    HUD_WIDTH,
-    MAP_WIDTH,
-    SCREEN_HEIGHT,
-    SCREEN_WIDTH,
-    TEXT_COLOR,
-    TILE_SIZE,
-)
+from config.settings import HUD_BACKGROUND_COLOR, HUD_WIDTH, MAP_WIDTH, SCREEN_HEIGHT, SCREEN_WIDTH, TEXT_COLOR, TILE_SIZE
 from game.entities.bullet import Bullet
 from game.entities.enemy import EnemyTank
 from game.entities.tank import Tank
@@ -39,6 +30,13 @@ HUD_PANEL_FILL = (18, 18, 22)
 HUD_PANEL_BORDER = (118, 88, 48)
 
 
+def gameplay_render_origin(tile_map: TileMap) -> tuple[int, int]:
+    """Center smaller arenas inside the fixed gameplay viewport."""
+    width_px = tile_map.width * TILE_SIZE
+    height_px = tile_map.height * TILE_SIZE
+    return ((MAP_WIDTH - width_px) // 2, (SCREEN_HEIGHT - height_px) // 2)
+
+
 def draw_scene(
     surface: pygame.Surface,
     font: pygame.font.Font,
@@ -60,17 +58,18 @@ def draw_scene(
     generated_seed: int | None = None,
 ) -> None:
     """Draw the full milestone scene for the current frame."""
+    origin_x, origin_y = gameplay_render_origin(tile_map)
     surface.fill((0, 0, 0))
     pygame.draw.rect(
         surface,
         HUD_BACKGROUND_COLOR,
         pygame.Rect(MAP_WIDTH, 0, SCREEN_WIDTH - MAP_WIDTH, SCREEN_HEIGHT),
     )
-    render_tile_map(surface, tile_map, font)
-    draw_player(surface, player)
-    draw_enemies(surface, active_enemies, path_visualization_enabled=path_visualization_enabled)
+    render_tile_map(surface, tile_map, font, origin_x, origin_y)
+    draw_player(surface, player, origin_x, origin_y)
+    draw_enemies(surface, active_enemies, origin_x, origin_y, path_visualization_enabled=path_visualization_enabled)
     if player_bullet is not None and player_bullet.active:
-        draw_bullet(surface, player_bullet)
+        draw_bullet(surface, player_bullet, origin_x, origin_y)
 
     title = font.render("Battle City AI", True, TEXT_COLOR)
     surface.blit(title, (24, 24))
@@ -108,44 +107,68 @@ def render_tile_map(
     surface: pygame.Surface,
     tile_map: TileMap,
     font: pygame.font.Font,
+    origin_x: int,
+    origin_y: int,
 ) -> None:
     """Draw the battlefield with pixel-art terrain textures."""
+    draw_gameplay_backdrop(surface, tile_map, origin_x, origin_y)
     for y, row in enumerate(tile_map.tiles):
         for x, tile_type in enumerate(row):
-            tile_rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+            tile_rect = pygame.Rect(origin_x + x * TILE_SIZE, origin_y + y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
             pygame.draw.rect(surface, TILE_COLORS[tile_type], tile_rect)
             surface.blit(tile_texture(tile_type), tile_rect)
 
-    draw_eagle_fortification(surface, tile_map)
+    draw_eagle_fortification(surface, tile_map, origin_x, origin_y)
 
-def draw_player(surface: pygame.Surface, player: Tank) -> None:
+
+def draw_gameplay_backdrop(surface: pygame.Surface, tile_map: TileMap, origin_x: int, origin_y: int) -> None:
+    """Fill unused gameplay space with a decorative forest belt for smaller arenas."""
+    map_rect = pygame.Rect(origin_x, origin_y, tile_map.width * TILE_SIZE, tile_map.height * TILE_SIZE)
+    road = tile_texture(TileType.EMPTY)
+    forest = tile_texture(TileType.FOREST)
+
+    for y in range(0, SCREEN_HEIGHT, TILE_SIZE):
+        for x in range(0, MAP_WIDTH, TILE_SIZE):
+            tile_rect = pygame.Rect(x, y, TILE_SIZE, TILE_SIZE)
+            if map_rect.colliderect(tile_rect):
+                continue
+            surface.blit(road, tile_rect)
+            # Use clustered forest decoration around the centered arena to define the visual boundary.
+            cell_x = x // TILE_SIZE
+            cell_y = y // TILE_SIZE
+            if (cell_x + cell_y) % 2 == 0 or x < origin_x or x >= map_rect.right:
+                surface.blit(forest, tile_rect)
+
+def draw_player(surface: pygame.Surface, player: Tank, origin_x: int, origin_y: int) -> None:
     """Draw the player tank using the active theme sprite."""
     sprite_size = player.size + 10
     sprite = tank_sprite("player", player.facing, sprite_size)
-    sprite_rect = sprite.get_rect(center=(round(player.x), round(player.y)))
+    sprite_rect = sprite.get_rect(center=(round(player.x) + origin_x, round(player.y) + origin_y))
     shadow = pygame.Surface(sprite.get_size(), pygame.SRCALPHA)
     shadow.fill((0, 0, 0, 55))
     surface.blit(shadow, sprite_rect.move(1, 2))
     surface.blit(sprite, sprite_rect)
 
 
-def draw_bullet(surface: pygame.Surface, bullet: Bullet) -> None:
+def draw_bullet(surface: pygame.Surface, bullet: Bullet, origin_x: int, origin_y: int) -> None:
     """Draw an active projectile."""
     color = (250, 244, 191) if bullet.owner == "player" else (231, 124, 94)
-    pygame.draw.circle(surface, color, (round(bullet.x), round(bullet.y)), bullet.radius)
+    pygame.draw.circle(surface, color, (round(bullet.x) + origin_x, round(bullet.y) + origin_y), bullet.radius)
 
 
 def draw_enemies(
     surface: pygame.Surface,
     enemies: list[EnemyTank],
+    origin_x: int,
+    origin_y: int,
     path_visualization_enabled: bool = True,
 ) -> None:
     """Draw active enemy tanks and any bullets they have fired."""
     for enemy in enemies:
         if path_visualization_enabled:
-            draw_enemy_path(surface, enemy)
+            draw_enemy_path(surface, enemy, origin_x, origin_y)
         body_rect = pygame.Rect(0, 0, enemy.size, enemy.size)
-        body_rect.center = (round(enemy.x), round(enemy.y))
+        body_rect.center = (round(enemy.x) + origin_x, round(enemy.y) + origin_y)
         sprite_size = enemy.size + 10
         sprite = tank_sprite(enemy.role, enemy.facing, sprite_size)
         sprite_rect = sprite.get_rect(center=body_rect.center)
@@ -158,16 +181,16 @@ def draw_enemies(
             draw_enemy_armor(surface, body_rect, enemy)
 
         if enemy.bullet is not None and enemy.bullet.active:
-            draw_bullet(surface, enemy.bullet)
+            draw_bullet(surface, enemy.bullet, origin_x, origin_y)
 
 
-def draw_enemy_path(surface: pygame.Surface, enemy: EnemyTank) -> None:
+def draw_enemy_path(surface: pygame.Surface, enemy: EnemyTank, origin_x: int, origin_y: int) -> None:
     """Overlay the currently planned BFS path for debugging."""
     if len(enemy.debug_path) < 2:
         return
 
     points = [
-        (tile_x * TILE_SIZE + TILE_SIZE // 2, tile_y * TILE_SIZE + TILE_SIZE // 2)
+        (origin_x + tile_x * TILE_SIZE + TILE_SIZE // 2, origin_y + tile_y * TILE_SIZE + TILE_SIZE // 2)
         for tile_x, tile_y in enemy.debug_path
     ]
     pygame.draw.lines(surface, path_color(enemy), False, points, width=2)
@@ -271,7 +294,7 @@ def draw_hud(
         surface.blit(banner, (hud_x, SCREEN_HEIGHT - 104))
 
 
-def draw_eagle_fortification(surface: pygame.Surface, tile_map: TileMap) -> None:
+def draw_eagle_fortification(surface: pygame.Surface, tile_map: TileMap, origin_x: int, origin_y: int) -> None:
     """Emphasize the classic brick fort around the eagle when present on the map."""
     eagle_x, eagle_y = tile_map.eagle_position
     fort_tiles = (
@@ -286,7 +309,7 @@ def draw_eagle_fortification(surface: pygame.Surface, tile_map: TileMap) -> None
     for tile_x, tile_y in fort_tiles:
         if 0 <= tile_x < tile_map.width and 0 <= tile_y < tile_map.height:
             if tile_map.tile_at(tile_x, tile_y) is TileType.BRICK:
-                rect = pygame.Rect(tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+                rect = pygame.Rect(origin_x + tile_x * TILE_SIZE, origin_y + tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
                 glow = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
                 glow.fill((255, 128, 64, 18))
                 surface.blit(glow, rect)

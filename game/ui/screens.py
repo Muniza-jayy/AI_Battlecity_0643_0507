@@ -47,6 +47,31 @@ class UIFontPack:
 
 
 @dataclass
+class SplashScreen:
+    """Intro screen with large tanks moving toward each other before the main menu."""
+
+    pulse: float = 0.0
+
+    def handle_event(self, event: pygame.event.Event, app_state: AppState) -> None:
+        if event.type == pygame.KEYDOWN and event.key in {pygame.K_RETURN, pygame.K_KP_ENTER, pygame.K_SPACE}:
+            app_state.current_screen = AppScreen.WELCOME
+        elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
+            app_state.current_screen = AppScreen.WELCOME
+
+    def update(self, app_state: AppState, dt_ms: int) -> None:
+        self.pulse = (self.pulse + dt_ms * 0.0012) % 6.283
+
+    def draw(self, surface: pygame.Surface, fonts: UIFontPack, app_state: AppState) -> None:
+        draw_battlefield_background(surface, self.pulse)
+        draw_splash_battle(surface, self.pulse)
+
+        title = fonts.title.render("Battle City AI", True, SOFT_TEXT)
+        subtitle = fonts.subtitle.render("Press Enter To Continue", True, AMBER)
+        surface.blit(title, title.get_rect(center=(SCREEN_WIDTH // 2, 150)))
+        surface.blit(subtitle, subtitle.get_rect(center=(SCREEN_WIDTH // 2, 218)))
+
+
+@dataclass
 class WelcomeScreen:
     """Battlefield-briefing landing screen with Battle City-inspired styling."""
 
@@ -60,9 +85,9 @@ class WelcomeScreen:
         height = 58
         gap = 18
         actions = [
-            ("Start Operation", AMBER, AppScreen.PLAYING),
-            ("Battle Options", OLIVE, AppScreen.OPTIONS),
-            ("Project Brief", STEEL_LIGHT, AppScreen.ABOUT),
+            ("Start Game", AMBER, AppScreen.PLAYING),
+            ("Game Options", OLIVE, AppScreen.OPTIONS),
+            ("About", STEEL_LIGHT, AppScreen.ABOUT),
             ("Quit", WARNING, AppScreen.GAME_OVER),
         ]
         self.buttons = []
@@ -103,18 +128,17 @@ class WelcomeScreen:
         draw_battlefield_background(surface, self.pulse)
 
         panel = Panel(
-            pygame.Rect(64, 70, 560, 664),
+            pygame.Rect(88, 108, 500, 564),
             border_color=STEEL_LIGHT,
             fill_color=(25, 27, 28, 224),
         )
         panel.draw(surface)
         draw_brick_header_band(surface, panel.rect)
-        draw_tactical_preview(surface, pygame.Rect(656, 86, 388, 360), self.pulse)
-        draw_status_card(surface, fonts, pygame.Rect(656, 474, 388, 260))
+        draw_menu_backdrop(surface, pygame.Rect(640, 96, 420, 560), self.pulse)
 
         title = fonts.title.render("Battle City AI", True, SOFT_TEXT)
-        subtitle = fonts.subtitle.render("CSP  |  BFS  |  GREEDY  |  A*  |  MINIMAX", True, AMBER)
-        header = fonts.small.render("TACTICAL SEARCH SYSTEMS BRIEFING", True, OLIVE)
+        subtitle = fonts.subtitle.render("Main Menu", True, AMBER)
+        header = fonts.small.render("ARMORED OPERATIONS", True, OLIVE)
         title_rect = title.get_rect(topleft=(108, 130))
         header_rect = header.get_rect(topleft=(110, 108))
         subtitle_rect = subtitle.get_rect(topleft=(112, 210))
@@ -124,7 +148,7 @@ class WelcomeScreen:
         draw_wrapped_text(
             surface,
             fonts.body,
-            "Defend the eagle. Read the battlefield. Outmaneuver search-driven armor.",
+            "Select a mode, configure the battlefield, and deploy into the city defense zone.",
             MUTED_TEXT,
             pygame.Rect(110, 258, 460, 76),
             line_gap=6,
@@ -578,6 +602,7 @@ class PauseScreen:
 class ScreenRouter:
     """Owns screen objects and routes draw/update calls by state."""
 
+    splash: SplashScreen = field(default_factory=SplashScreen)
     welcome: WelcomeScreen = field(default_factory=WelcomeScreen)
     options: OptionsScreen = field(default_factory=OptionsScreen)
     about: AboutScreen = field(default_factory=AboutScreen)
@@ -586,6 +611,7 @@ class ScreenRouter:
 
     def current(self, app_state: AppState) -> Screen | None:
         mapping: dict[AppScreen, Screen | None] = {
+            AppScreen.SPLASH: self.splash,
             AppScreen.WELCOME: self.welcome,
             AppScreen.OPTIONS: self.options,
             AppScreen.ABOUT: self.about,
@@ -673,6 +699,73 @@ def draw_brick_header_band(surface: pygame.Surface, rect: pygame.Rect) -> None:
     for x in range(band.x + 8, band.right - 8, 42):
         pygame.draw.rect(surface, BRICK, pygame.Rect(x, band.y + 6, 34, 10), border_radius=2)
         pygame.draw.rect(surface, BRICK, pygame.Rect(x + 16, band.y + 19, 34, 10), border_radius=2)
+
+
+def draw_splash_battle(surface: pygame.Surface, pulse: float) -> None:
+    ground = pygame.Rect(0, SCREEN_HEIGHT - 190, SCREEN_WIDTH, 190)
+    pygame.draw.rect(surface, (12, 10, 10), ground)
+    for x in range(0, SCREEN_WIDTH, 42):
+        surface.blit(tile_texture(TileType.BRICK, 42), (x, SCREEN_HEIGHT - 98))
+
+    wave = (pulse % 3.1415) / 3.1415
+    approach = int(wave * 70)
+    recoil = 8 if 0.46 < wave < 0.54 else 0
+    left_x = 170 + approach - recoil
+    right_x = SCREEN_WIDTH - 170 - approach + recoil
+    left_center = (left_x, SCREEN_HEIGHT - 172)
+    right_center = (right_x, SCREEN_HEIGHT - 172)
+
+    for pos_x in (72, SCREEN_WIDTH - 132):
+        surface.blit(tile_texture(TileType.FOREST, 56), (pos_x, SCREEN_HEIGHT - 164))
+    for pos_x in (300, SCREEN_WIDTH - 356):
+        surface.blit(tile_texture(TileType.STEEL, 56), (pos_x, SCREEN_HEIGHT - 138))
+
+    draw_preview_tank(surface, left_center, "player", Direction.RIGHT, 140)
+    draw_preview_tank(surface, right_center, "boss", Direction.LEFT, 140)
+
+    bullet_x = left_center[0] + 55 + int(wave * (right_center[0] - left_center[0] - 110))
+    bullet_y = SCREEN_HEIGHT - 172
+    for trail in range(3):
+        pygame.draw.circle(surface, (255, 226, 150, 30 + trail * 20), (bullet_x - trail * 18, bullet_y), 6 - trail)
+    pygame.draw.circle(surface, (255, 235, 168), (bullet_x, bullet_y), 8)
+
+    return_x = right_center[0] - 55 - int(wave * (right_center[0] - left_center[0] - 110))
+    return_y = SCREEN_HEIGHT - 150
+    for trail in range(3):
+        pygame.draw.circle(surface, (255, 128, 92, 30 + trail * 20), (return_x + trail * 18, return_y), 6 - trail)
+    pygame.draw.circle(surface, (255, 120, 84), (return_x, return_y), 8)
+
+    if recoil:
+        draw_muzzle_flash(surface, (left_center[0] + 80, left_center[1] - 6), (255, 232, 168))
+        draw_muzzle_flash(surface, (right_center[0] - 80, right_center[1] - 6), (255, 138, 104))
+
+
+def draw_menu_backdrop(surface: pygame.Surface, rect: pygame.Rect, pulse: float) -> None:
+    panel = Panel(rect, fill_color=(18, 18, 22, 208), border_color=STEEL)
+    panel.draw(surface)
+    inner = rect.inflate(-28, -28)
+    pygame.draw.rect(surface, (6, 6, 8), inner, border_radius=10)
+
+    clusters = [
+        (TileType.BRICK, [(1, 2), (2, 2), (1, 3), (2, 3)]),
+        (TileType.STEEL, [(8, 2), (9, 2)]),
+        (TileType.WATER, [(6, 5), (7, 5)]),
+        (TileType.FOREST, [(3, 7), (4, 7)]),
+    ]
+    cell = 34
+    for tile_type, positions in clusters:
+        for gx, gy in positions:
+            surface.blit(tile_texture(tile_type, cell - 6), (inner.x + gx * cell, inner.y + gy * cell))
+
+    draw_preview_tank(surface, (inner.centerx - 8, inner.y + 178), "basic", Direction.RIGHT, 64)
+    draw_preview_tank(surface, (inner.centerx + 22, inner.y + 336), "armor", Direction.LEFT, 64)
+
+
+def draw_muzzle_flash(surface: pygame.Surface, center: tuple[int, int], color: tuple[int, int, int]) -> None:
+    flash = pygame.Surface((40, 40), pygame.SRCALPHA)
+    pygame.draw.circle(flash, (*color, 70), (20, 20), 16)
+    pygame.draw.circle(flash, (*color, 140), (20, 20), 8)
+    surface.blit(flash, flash.get_rect(center=center))
 
 
 def draw_tactical_preview(surface: pygame.Surface, rect: pygame.Rect, pulse: float) -> None:
