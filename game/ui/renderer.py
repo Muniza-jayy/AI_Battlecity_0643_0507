@@ -16,14 +16,15 @@ from config.settings import (
 )
 from game.entities.bullet import Bullet
 from game.entities.enemy import EnemyTank
-from game.entities.tank import Direction, Tank
+from game.entities.tank import Tank
 from game.core.state import MatchOutcome
 from game.ui.debug_overlay import draw_debug_overlay
+from game.ui.theme_assets import tank_sprite, tile_texture
 from game.world.tiles import TileMap, TileType
 
 
 TILE_COLORS: dict[TileType, tuple[int, int, int]] = {
-    TileType.EMPTY: (44, 51, 60),
+    TileType.EMPTY: (0, 0, 0),
     TileType.BRICK: (168, 86, 50),
     TileType.STEEL: (129, 139, 149),
     TileType.WATER: (43, 104, 160),
@@ -32,7 +33,6 @@ TILE_COLORS: dict[TileType, tuple[int, int, int]] = {
 }
 
 SPAWN_COLOR = (230, 230, 230)
-GRID_LINE_COLOR = (26, 30, 38)
 HUD_TEXT_COLOR = (240, 240, 240)
 
 
@@ -57,7 +57,7 @@ def draw_scene(
     generated_seed: int | None = None,
 ) -> None:
     """Draw the full milestone scene for the current frame."""
-    surface.fill(BACKGROUND_COLOR)
+    surface.fill((0, 0, 0))
     pygame.draw.rect(
         surface,
         HUD_BACKGROUND_COLOR,
@@ -106,33 +106,24 @@ def render_tile_map(
     tile_map: TileMap,
     font: pygame.font.Font,
 ) -> None:
-    """Draw the starter level using flat colors and simple markers."""
+    """Draw the battlefield with pixel-art terrain textures."""
     for y, row in enumerate(tile_map.tiles):
         for x, tile_type in enumerate(row):
             tile_rect = pygame.Rect(x * TILE_SIZE, y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
             pygame.draw.rect(surface, TILE_COLORS[tile_type], tile_rect)
-            pygame.draw.rect(surface, GRID_LINE_COLOR, tile_rect, width=1)
+            surface.blit(tile_texture(tile_type), tile_rect)
 
-    _draw_spawn_marker(surface, tile_map.player_spawn, "P")
-    for enemy_spawn in tile_map.enemy_spawns:
-        _draw_spawn_marker(surface, enemy_spawn, "X")
+    draw_eagle_fortification(surface, tile_map)
 
 def draw_player(surface: pygame.Surface, player: Tank) -> None:
-    """Draw the player tank body and facing marker."""
-    body_rect = pygame.Rect(0, 0, player.size, player.size)
-    body_rect.center = (round(player.x), round(player.y))
-    pygame.draw.rect(surface, (235, 214, 92), body_rect, border_radius=6)
-    pygame.draw.rect(surface, (80, 64, 24), body_rect, width=2, border_radius=6)
-
-    center = body_rect.center
-    half = player.size // 2
-    barrel_end = {
-        Direction.UP: (center[0], center[1] - half - 6),
-        Direction.DOWN: (center[0], center[1] + half + 6),
-        Direction.LEFT: (center[0] - half - 6, center[1]),
-        Direction.RIGHT: (center[0] + half + 6, center[1]),
-    }[player.facing]
-    pygame.draw.line(surface, (80, 64, 24), center, barrel_end, width=4)
+    """Draw the player tank using the active theme sprite."""
+    sprite_size = player.size + 10
+    sprite = tank_sprite("player", player.facing, sprite_size)
+    sprite_rect = sprite.get_rect(center=(round(player.x), round(player.y)))
+    shadow = pygame.Surface(sprite.get_size(), pygame.SRCALPHA)
+    shadow.fill((0, 0, 0, 55))
+    surface.blit(shadow, sprite_rect.move(1, 2))
+    surface.blit(sprite, sprite_rect)
 
 
 def draw_bullet(surface: pygame.Surface, bullet: Bullet) -> None:
@@ -152,19 +143,13 @@ def draw_enemies(
             draw_enemy_path(surface, enemy)
         body_rect = pygame.Rect(0, 0, enemy.size, enemy.size)
         body_rect.center = (round(enemy.x), round(enemy.y))
-        fill_color, outline_color = enemy_colors(enemy)
-        pygame.draw.rect(surface, fill_color, body_rect, border_radius=6)
-        pygame.draw.rect(surface, outline_color, body_rect, width=2, border_radius=6)
-
-        center = body_rect.center
-        half = enemy.size // 2
-        barrel_end = {
-            Direction.UP: (center[0], center[1] - half - 6),
-            Direction.DOWN: (center[0], center[1] + half + 6),
-            Direction.LEFT: (center[0] - half - 6, center[1]),
-            Direction.RIGHT: (center[0] + half + 6, center[1]),
-        }[enemy.facing]
-        pygame.draw.line(surface, outline_color, center, barrel_end, width=4)
+        sprite_size = enemy.size + 10
+        sprite = tank_sprite(enemy.role, enemy.facing, sprite_size)
+        sprite_rect = sprite.get_rect(center=body_rect.center)
+        shadow = pygame.Surface(sprite.get_size(), pygame.SRCALPHA)
+        shadow.fill((0, 0, 0, 55))
+        surface.blit(shadow, sprite_rect.move(1, 2))
+        surface.blit(sprite, sprite_rect)
 
         if enemy.max_hit_points > 1:
             draw_enemy_armor(surface, body_rect, enemy)
@@ -199,10 +184,10 @@ def path_color(enemy: EnemyTank) -> tuple[int, int, int]:
     if enemy.role == "boss":
         return (255, 154, 146)
     if enemy.role == "fast":
-        return (130, 235, 250)
+        return (120, 220, 240)
     if enemy.role == "armor":
-        return (216, 223, 233)
-    return (112, 230, 219)
+        return (208, 220, 230)
+    return (228, 138, 98)
 
 
 def draw_enemy_armor(surface: pygame.Surface, body_rect: pygame.Rect, enemy: EnemyTank) -> None:
@@ -272,32 +257,22 @@ def draw_hud(
         surface.blit(banner, (hud_x, SCREEN_HEIGHT - 94))
 
 
-def _draw_spawn_marker(surface: pygame.Surface, position: tuple[int, int], label: str) -> None:
-    center_x = position[0] * TILE_SIZE + TILE_SIZE // 2
-    center_y = position[1] * TILE_SIZE + TILE_SIZE // 2
-    radius = max(6, TILE_SIZE // 4)
-    pygame.draw.circle(surface, SPAWN_COLOR, (center_x, center_y), radius, width=2)
-
-    if label == "P":
-        pygame.draw.line(
-            surface,
-            SPAWN_COLOR,
-            (center_x, center_y - radius + 2),
-            (center_x, center_y + radius - 2),
-            width=2,
-        )
-    else:
-        pygame.draw.line(
-            surface,
-            SPAWN_COLOR,
-            (center_x - radius + 2, center_y - radius + 2),
-            (center_x + radius - 2, center_y + radius - 2),
-            width=2,
-        )
-        pygame.draw.line(
-            surface,
-            SPAWN_COLOR,
-            (center_x + radius - 2, center_y - radius + 2),
-            (center_x - radius + 2, center_y + radius - 2),
-            width=2,
-        )
+def draw_eagle_fortification(surface: pygame.Surface, tile_map: TileMap) -> None:
+    """Emphasize the classic brick fort around the eagle when present on the map."""
+    eagle_x, eagle_y = tile_map.eagle_position
+    fort_tiles = (
+        (eagle_x - 2, eagle_y),
+        (eagle_x - 1, eagle_y),
+        (eagle_x + 1, eagle_y),
+        (eagle_x + 2, eagle_y),
+        (eagle_x - 1, eagle_y + 1),
+        (eagle_x, eagle_y + 1),
+        (eagle_x + 1, eagle_y + 1),
+    )
+    for tile_x, tile_y in fort_tiles:
+        if 0 <= tile_x < tile_map.width and 0 <= tile_y < tile_map.height:
+            if tile_map.tile_at(tile_x, tile_y) is TileType.BRICK:
+                rect = pygame.Rect(tile_x * TILE_SIZE, tile_y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+                glow = pygame.Surface((TILE_SIZE, TILE_SIZE), pygame.SRCALPHA)
+                glow.fill((255, 128, 64, 18))
+                surface.blit(glow, rect)

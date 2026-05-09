@@ -134,3 +134,13 @@
 - [ ] Improve hover/press feedback
 - [ ] Refine animation timing
 - [ ] Clean up resize/layout behavior
+
+### UI Milestone 7: Battle City pixel-art theme extension
+
+- [x] Add `assets/tiles`, `assets/tanks`, and `assets/ui`
+- [x] Refactor theme asset loading into a shared sprite pipeline
+- [x] Add procedural fallback pixel-art tiles for all battlefield terrain types
+- [x] Add procedural fallback tank sprites for player and enemy roles
+- [x] Replace flat gameplay rendering with sprite-based tiles and tanks
+- [x] Upgrade the welcome screen with moving battlefield-themed tank art
+- [x] Support optional file-based assets without breaking fallback rendering

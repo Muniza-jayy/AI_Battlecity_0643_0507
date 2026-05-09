@@ -31,11 +31,11 @@ def main(max_frames: Optional[int] = None) -> int:
 
 def build_fonts() -> UIFontPack:
     """Create the font pack used by the screen system."""
-    title = pygame.font.SysFont("Avenir Next,Helvetica Neue,Arial", 72, bold=True)
-    subtitle = pygame.font.SysFont("Menlo,Monaco,Courier New", 26, bold=False)
-    body = pygame.font.SysFont("Avenir Next,Helvetica Neue,Arial", 32)
-    button = pygame.font.SysFont("Avenir Next,Helvetica Neue,Arial", 28, bold=True)
-    small = pygame.font.SysFont("Menlo,Monaco,Courier New", 18)
+    title = pygame.font.SysFont("Avenir Next Condensed,Arial Narrow,Helvetica Neue,Arial", 74, bold=True)
+    subtitle = pygame.font.SysFont("Avenir Next,Helvetica Neue,Arial", 28, bold=True)
+    body = pygame.font.SysFont("Avenir Next,Helvetica Neue,Arial", 28)
+    button = pygame.font.SysFont("Avenir Next,Helvetica Neue,Arial", 26, bold=True)
+    small = pygame.font.SysFont("Avenir Next,Helvetica Neue,Arial", 18)
     return UIFontPack(title=title, subtitle=subtitle, body=body, button=button, small=small)
 
 

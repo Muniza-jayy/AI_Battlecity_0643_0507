@@ -9,8 +9,11 @@ import pygame  # type: ignore[import]
 
 from config.settings import SCREEN_HEIGHT, SCREEN_WIDTH
 from game.core.state import AppScreen, AppState, MatchOutcome
+from game.entities.tank import Direction
 from game.modes.level_flow import BOSS_LABEL, LEVEL_1_LABEL, LEVEL_2_LABEL, create_game_state_from_settings
+from game.ui.theme_assets import tank_sprite, tile_texture
 from game.ui.widgets import Button, Panel
+from game.world.tiles import TileType
 
 
 BG_BASE = (18, 20, 22)
@@ -112,19 +115,20 @@ class WelcomeScreen:
         title = fonts.title.render("Battle City AI", True, SOFT_TEXT)
         subtitle = fonts.subtitle.render("CSP  |  BFS  |  GREEDY  |  A*  |  MINIMAX", True, AMBER)
         header = fonts.small.render("TACTICAL SEARCH SYSTEMS BRIEFING", True, OLIVE)
-        desc = fonts.body.render(
-            "Defend the eagle. Read the battlefield. Outmaneuver search-driven armor.",
-            True,
-            MUTED_TEXT,
-        )
         title_rect = title.get_rect(topleft=(108, 130))
         header_rect = header.get_rect(topleft=(110, 108))
         subtitle_rect = subtitle.get_rect(topleft=(112, 210))
-        desc_rect = desc.get_rect(topleft=(110, 258))
         surface.blit(header, header_rect)
         surface.blit(title, title_rect)
         surface.blit(subtitle, subtitle_rect)
-        surface.blit(desc, desc_rect)
+        draw_wrapped_text(
+            surface,
+            fonts.body,
+            "Defend the eagle. Read the battlefield. Outmaneuver search-driven armor.",
+            MUTED_TEXT,
+            pygame.Rect(110, 258, 460, 76),
+            line_gap=6,
+        )
 
         draw_title_glow(surface, title_rect.inflate(40, 22), AMBER)
         draw_divider(surface, 110, 302, 468, BRICK)
@@ -633,6 +637,36 @@ def draw_divider(surface: pygame.Surface, x: int, y: int, width: int, color: tup
     pygame.draw.line(surface, STEEL, (x, y + 5), (x + width, y + 5), width=1)
 
 
+def draw_wrapped_text(
+    surface: pygame.Surface,
+    font: pygame.font.Font,
+    text: str,
+    color: tuple[int, int, int],
+    rect: pygame.Rect,
+    *,
+    line_gap: int = 6,
+) -> None:
+    words = text.split()
+    lines: list[str] = []
+    current = ""
+    for word in words:
+        candidate = word if not current else f"{current} {word}"
+        if font.size(candidate)[0] <= rect.width:
+            current = candidate
+        else:
+            if current:
+                lines.append(current)
+            current = word
+    if current:
+        lines.append(current)
+
+    y = rect.y
+    for line in lines:
+        rendered = font.render(line, True, color)
+        surface.blit(rendered, (rect.x, y))
+        y += font.get_linesize() + line_gap
+
+
 def draw_brick_header_band(surface: pygame.Surface, rect: pygame.Rect) -> None:
     band = pygame.Rect(rect.x, rect.y, rect.width, 36)
     pygame.draw.rect(surface, BRICK_DARK, band, border_top_left_radius=18, border_top_right_radius=18)
@@ -647,49 +681,58 @@ def draw_tactical_preview(surface: pygame.Surface, rect: pygame.Rect, pulse: flo
     inner = rect.inflate(-28, -28)
     pygame.draw.rect(surface, (17, 19, 20), inner, border_radius=10)
     cell = 28
-    for y in range(inner.y, inner.bottom, cell):
-        pygame.draw.line(surface, (52, 58, 61), (inner.x, y), (inner.right, y), width=1)
-    for x in range(inner.x, inner.right, cell):
-        pygame.draw.line(surface, (52, 58, 61), (x, inner.y), (x, inner.bottom), width=1)
+    for gy in range(0, max(1, inner.height // cell)):
+        for gx in range(0, max(1, inner.width // cell)):
+            draw_preview_tile(surface, inner, gx, gy, TileType.EMPTY, cell)
 
-    bricks = [
-        (1, 1), (2, 1), (6, 2), (7, 2), (5, 5), (6, 5), (8, 7), (2, 8),
-    ]
+    bricks = [(1, 1), (2, 1), (6, 2), (7, 2), (5, 5), (6, 5), (8, 7), (2, 8)]
     steels = [(4, 2), (4, 3), (9, 4), (3, 7)]
     waters = [(1, 6), (2, 6), (7, 8)]
-    forests = [(9, 1), (10, 1), (10, 6)]
+    forests = [(9, 1), (10, 1), (10, 6), (2, 9)]
     for gx, gy in bricks:
-        draw_tile_block(surface, inner, gx, gy, BRICK, BRICK_DARK)
+        draw_preview_tile(surface, inner, gx, gy, TileType.BRICK, cell)
     for gx, gy in steels:
-        draw_tile_block(surface, inner, gx, gy, STEEL_LIGHT, STEEL)
+        draw_preview_tile(surface, inner, gx, gy, TileType.STEEL, cell)
     for gx, gy in waters:
-        draw_tile_block(surface, inner, gx, gy, WATER, (35, 60, 78))
+        draw_preview_tile(surface, inner, gx, gy, TileType.WATER, cell)
     for gx, gy in forests:
-        draw_tile_block(surface, inner, gx, gy, OLIVE, (69, 80, 46))
+        draw_preview_tile(surface, inner, gx, gy, TileType.FOREST, cell)
 
-    player = (inner.x + cell * 5 + cell // 2, inner.y + cell * 10 + cell // 2)
-    boss = (inner.x + cell * 8 + cell // 2, inner.y + cell * 2 + cell // 2)
-    eagle = (inner.x + cell * 5 + cell // 2, inner.y + cell * 9 + cell // 2)
-    draw_tank_marker(surface, player, SOFT_TEXT, (86, 72, 38))
-    draw_tank_marker(surface, boss, WARNING, (81, 32, 28))
-    pygame.draw.rect(surface, (214, 188, 103), pygame.Rect(eagle[0] - 8, eagle[1] - 8, 16, 16), border_radius=3)
+    player_center = (inner.x + cell * 3 + 14 + int(pulse * 8) % (cell * 3), inner.y + cell * 9 + cell // 2)
+    enemy_center = (inner.right - 42 - (int(pulse * 10) % (cell * 3)), inner.y + cell * 2 + cell // 2)
+    eagle_tile = pygame.Rect(inner.x + cell * 5 + 4, inner.y + cell * 9 + 4, cell - 8, cell - 8)
+    surface.blit(tile_texture(TileType.EAGLE, size=cell - 8), eagle_tile)
+    draw_preview_tank(surface, player_center, "player", Direction.RIGHT, 30)
+    draw_preview_tank(surface, enemy_center, "basic", Direction.LEFT, 30)
+
     sweep_x = inner.x + int((pulse * 32) % max(1, inner.width))
     pygame.draw.line(surface, (*AMBER, 120), (sweep_x, inner.y), (sweep_x - 48, inner.bottom), width=2)
 
 
-def draw_tile_block(surface: pygame.Surface, inner: pygame.Rect, gx: int, gy: int, fill: tuple[int, int, int], accent: tuple[int, int, int]) -> None:
-    cell = 28
+def draw_preview_tile(
+    surface: pygame.Surface,
+    inner: pygame.Rect,
+    gx: int,
+    gy: int,
+    tile_type: TileType,
+    cell: int,
+) -> None:
     rect = pygame.Rect(inner.x + gx * cell + 4, inner.y + gy * cell + 4, cell - 8, cell - 8)
-    pygame.draw.rect(surface, fill, rect, border_radius=4)
-    pygame.draw.rect(surface, accent, rect, width=1, border_radius=4)
+    surface.blit(tile_texture(tile_type, size=cell - 8), rect)
+    pygame.draw.rect(surface, (36, 38, 40), rect, width=1, border_radius=2)
 
 
-def draw_tank_marker(surface: pygame.Surface, center: tuple[int, int], fill: tuple[int, int, int], accent: tuple[int, int, int]) -> None:
-    rect = pygame.Rect(0, 0, 18, 18)
-    rect.center = center
-    pygame.draw.rect(surface, fill, rect, border_radius=4)
-    pygame.draw.rect(surface, accent, rect, width=2, border_radius=4)
-    pygame.draw.line(surface, accent, center, (center[0], center[1] - 14), width=3)
+def draw_preview_tank(
+    surface: pygame.Surface,
+    center: tuple[int, int],
+    role: str,
+    facing: Direction,
+    size: int,
+) -> None:
+    sprite = tank_sprite(role, facing, size)
+    rect = sprite.get_rect(center=center)
+    surface.blit(sprite, rect)
+    pygame.draw.rect(surface, (18, 20, 22), rect, width=1, border_radius=2)
 
 
 def draw_status_card(surface: pygame.Surface, fonts: UIFontPack, rect: pygame.Rect) -> None:
