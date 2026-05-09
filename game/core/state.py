@@ -4,11 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from enum import StrEnum
+from typing import TYPE_CHECKING
 
 from game.entities.bullet import Bullet
 from game.entities.enemy import EnemyTank
 from game.entities.tank import Direction, Tank
 from game.world.tiles import TileMap
+
+if TYPE_CHECKING:
+    from game.audio.manager import AudioManager
 
 
 @dataclass
@@ -84,3 +88,4 @@ class AppState:
     running: bool = True
     game_state: GameState | None = None
     ui_settings: UISettings = field(default_factory=UISettings)
+    audio_manager: "AudioManager | None" = None

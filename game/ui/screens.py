@@ -105,16 +105,22 @@ class WelcomeScreen:
             )
 
     def bind(self, app_state: AppState) -> None:
+        audio = app_state.audio_manager
         for button in self.buttons:
+            button.on_hover = (lambda audio=audio: audio.play_sfx("menu_hover")) if audio is not None else (lambda: None)
             target = button.action_id
             if target is AppScreen.PLAYING:
-                button.on_click = lambda app_state=app_state: self._start_game(app_state)
+                button.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(audio, self._start_game, app_state)
             elif target is AppScreen.OPTIONS:
-                button.on_click = lambda app_state=app_state: self._change_screen(app_state, AppScreen.OPTIONS)
+                button.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(
+                    audio, self._change_screen, app_state, AppScreen.OPTIONS
+                )
             elif target is AppScreen.ABOUT:
-                button.on_click = lambda app_state=app_state: self._change_screen(app_state, AppScreen.ABOUT)
+                button.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(
+                    audio, self._change_screen, app_state, AppScreen.ABOUT
+                )
             else:
-                button.on_click = lambda app_state=app_state: self._quit(app_state)
+                button.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(audio, self._quit, app_state)
 
     def handle_event(self, event: pygame.event.Event, app_state: AppState) -> None:
         self.bind(app_state)
@@ -180,6 +186,12 @@ class WelcomeScreen:
         if app_state.game_state is not None:
             app_state.game_state.running = False
 
+    @staticmethod
+    def _play_ui_and(audio, fn, *args) -> None:
+        if audio is not None:
+            audio.play_sfx("menu_select")
+        fn(*args)
+
 
 @dataclass
 class PlaceholderScreen:
@@ -200,7 +212,9 @@ class PlaceholderScreen:
         )
 
     def handle_event(self, event: pygame.event.Event, app_state: AppState) -> None:
-        self.back_button.on_click = lambda app_state=app_state: self._go_back(app_state)
+        audio = app_state.audio_manager
+        self.back_button.on_hover = (lambda audio=audio: audio.play_sfx("menu_hover")) if audio is not None else (lambda: None)
+        self.back_button.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(audio, self._go_back, app_state)
         self.back_button.handle_event(event)
 
     def update(self, app_state: AppState, dt_ms: int) -> None:
@@ -220,6 +234,12 @@ class PlaceholderScreen:
     def _go_back(app_state: AppState) -> None:
         app_state.current_screen = AppScreen.WELCOME
 
+    @staticmethod
+    def _play_ui_and(audio, fn, *args) -> None:
+        if audio is not None:
+            audio.play_sfx("menu_select")
+        fn(*args)
+
 
 @dataclass
 class AboutScreen:
@@ -237,7 +257,9 @@ class AboutScreen:
         )
 
     def handle_event(self, event: pygame.event.Event, app_state: AppState) -> None:
-        self.back_button.on_click = lambda app_state=app_state: self._go_back(app_state)
+        audio = app_state.audio_manager
+        self.back_button.on_hover = (lambda audio=audio: audio.play_sfx("menu_hover")) if audio is not None else (lambda: None)
+        self.back_button.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(audio, self._go_back, app_state)
         self.back_button.handle_event(event)
 
     def update(self, app_state: AppState, dt_ms: int) -> None:
@@ -283,6 +305,12 @@ class AboutScreen:
     @staticmethod
     def _go_back(app_state: AppState) -> None:
         app_state.current_screen = AppScreen.WELCOME
+
+    @staticmethod
+    def _play_ui_and(audio, fn, *args) -> None:
+        if audio is not None:
+            audio.play_sfx("menu_select")
+        fn(*args)
 
 
 @dataclass
@@ -399,15 +427,26 @@ class OptionsScreen:
             surface.blit(text, (580, 340 + index * 42))
 
     def bind(self, app_state: AppState) -> None:
-        self.back_button.on_click = lambda app_state=app_state: self._go_back(app_state)
-        self.debug_toggle.on_click = lambda app_state=app_state: self._toggle_debug(app_state)
-        self.path_toggle.on_click = lambda app_state=app_state: self._toggle_paths(app_state)
+        audio = app_state.audio_manager
+        hover = (lambda audio=audio: audio.play_sfx("menu_hover")) if audio is not None else (lambda: None)
+        self.back_button.on_hover = hover
+        self.debug_toggle.on_hover = hover
+        self.path_toggle.on_hover = hover
+        self.back_button.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(audio, self._go_back, app_state)
+        self.debug_toggle.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(audio, self._toggle_debug, app_state)
+        self.path_toggle.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(audio, self._toggle_paths, app_state)
         for button in self.level_buttons:
             label = button.action_id
-            button.on_click = lambda label=label, app_state=app_state: self._set_level(app_state, str(label))
+            button.on_hover = hover
+            button.on_click = lambda label=label, app_state=app_state, audio=audio: self._play_ui_and(
+                audio, self._set_level, app_state, str(label)
+            )
         for button in self.difficulty_buttons:
             label = button.action_id
-            button.on_click = lambda label=label, app_state=app_state: self._set_difficulty(app_state, str(label))
+            button.on_hover = hover
+            button.on_click = lambda label=label, app_state=app_state, audio=audio: self._play_ui_and(
+                audio, self._set_difficulty, app_state, str(label)
+            )
 
     @staticmethod
     def _draw_section_label(surface: pygame.Surface, fonts: UIFontPack, label: str, x: int, y: int) -> None:
@@ -434,6 +473,12 @@ class OptionsScreen:
     def _toggle_paths(app_state: AppState) -> None:
         app_state.ui_settings.path_visualization_enabled = not app_state.ui_settings.path_visualization_enabled
 
+    @staticmethod
+    def _play_ui_and(audio, fn, *args) -> None:
+        if audio is not None:
+            audio.play_sfx("menu_select")
+        fn(*args)
+
 
 @dataclass
 class GameOverScreen:
@@ -459,8 +504,12 @@ class GameOverScreen:
         )
 
     def handle_event(self, event: pygame.event.Event, app_state: AppState) -> None:
-        self.retry_button.on_click = lambda app_state=app_state: self._retry(app_state)
-        self.back_button.on_click = lambda app_state=app_state: self._back_to_menu(app_state)
+        audio = app_state.audio_manager
+        hover = (lambda audio=audio: audio.play_sfx("menu_hover")) if audio is not None else (lambda: None)
+        self.retry_button.on_hover = hover
+        self.back_button.on_hover = hover
+        self.retry_button.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(audio, self._retry, app_state)
+        self.back_button.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(audio, self._back_to_menu, app_state)
         self.retry_button.handle_event(event)
         self.back_button.handle_event(event)
 
@@ -505,6 +554,12 @@ class GameOverScreen:
     def _back_to_menu(app_state: AppState) -> None:
         app_state.current_screen = AppScreen.WELCOME
 
+    @staticmethod
+    def _play_ui_and(audio, fn, *args) -> None:
+        if audio is not None:
+            audio.play_sfx("menu_select")
+        fn(*args)
+
 
 @dataclass
 class PauseScreen:
@@ -539,11 +594,18 @@ class PauseScreen:
 
     def handle_event(self, event: pygame.event.Event, app_state: AppState) -> None:
         if event.type == pygame.KEYDOWN and event.key == pygame.K_p:
+            if app_state.audio_manager is not None:
+                app_state.audio_manager.play_sfx("unpause")
             self._resume(app_state)
             return
-        self.resume_button.on_click = lambda app_state=app_state: self._resume(app_state)
-        self.retry_button.on_click = lambda app_state=app_state: self._retry(app_state)
-        self.back_button.on_click = lambda app_state=app_state: self._back_to_menu(app_state)
+        audio = app_state.audio_manager
+        hover = (lambda audio=audio: audio.play_sfx("menu_hover")) if audio is not None else (lambda: None)
+        self.resume_button.on_hover = hover
+        self.retry_button.on_hover = hover
+        self.back_button.on_hover = hover
+        self.resume_button.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(audio, self._resume, app_state)
+        self.retry_button.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(audio, self._retry, app_state)
+        self.back_button.on_click = lambda app_state=app_state, audio=audio: self._play_ui_and(audio, self._back_to_menu, app_state)
         self.resume_button.handle_event(event)
         self.retry_button.handle_event(event)
         self.back_button.handle_event(event)
@@ -596,6 +658,12 @@ class PauseScreen:
         if app_state.game_state is not None:
             app_state.game_state.paused = False
         app_state.current_screen = AppScreen.WELCOME
+
+    @staticmethod
+    def _play_ui_and(audio, fn, *args) -> None:
+        if audio is not None:
+            audio.play_sfx("menu_select")
+        fn(*args)
 
 
 @dataclass

@@ -144,3 +144,27 @@
 - [x] Replace flat gameplay rendering with sprite-based tiles and tanks
 - [x] Upgrade the welcome screen with moving battlefield-themed tank art
 - [x] Support optional file-based assets without breaking fallback rendering
+
+
+## sounds
+ 
+ ### When sourcing from OpenGameArt-compatible/free assets:
+
+  1. download and place raw files under assets/audio/...
+  2. normalize naming in code, not by scattered manual references
+  3. keep a simple manifest in library.py
+  4. prefer .ogg for music/loops, .wav for short SFX when possible
+  5. keep loop lengths short and clean
+
+ ### Implementation Order
+
+  1. create assets/audio/music, sfx, ambience
+  2. add AudioManager with disabled/fallback-safe init
+  3. add manifest/library mapping semantic ids to files
+  4. wire screen-based music switching
+  5. wire menu hover/select
+  6. wire gameplay shoot/hit/destroy effects
+  7. add victory/defeat/boss audio switching
+  8. tune channel/volume behavior
+
+

@@ -7,6 +7,7 @@ from typing import Optional
 import pygame  # type: ignore[import]
 
 from config.settings import SCREEN_HEIGHT, SCREEN_WIDTH, WINDOW_TITLE
+from game.audio.manager import AudioManager
 from game.core.loop import create_display, run_application_loop
 from game.core.state import AppState
 from game.modes.level_flow import create_starter_game_state
@@ -21,11 +22,14 @@ def main(max_frames: Optional[int] = None) -> int:
     window = create_display(max_frames)
     scene = pygame.Surface((SCREEN_WIDTH, SCREEN_HEIGHT))
     fonts = build_fonts()
-    app_state = AppState(game_state=create_starter_game_state())
+    audio_manager = AudioManager()
+    app_state = AppState(game_state=create_starter_game_state(), audio_manager=audio_manager)
+    audio_manager.set_screen_audio(app_state.current_screen)
 
     try:
         return run_application_loop(window, scene, fonts, app_state, max_frames=max_frames)
     finally:
+        audio_manager.stop_all()
         pygame.quit()
 
 

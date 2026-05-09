@@ -144,7 +144,7 @@ def collect_input() -> InputState:
     return build_input_state(list(pygame.event.get()))
 
 
-def update_game_state(game_state: GameState, input_state: InputState) -> None:
+def update_game_state(game_state: GameState, input_state: InputState, audio_manager=None) -> None:
     """Apply frame input to the game state."""
     if input_state.quit_requested:
         game_state.running = False
@@ -162,6 +162,8 @@ def update_game_state(game_state: GameState, input_state: InputState) -> None:
 
     if input_state.toggle_pause_requested:
         game_state.paused = not game_state.paused
+        if audio_manager is not None:
+            audio_manager.play_sfx("pause" if game_state.paused else "unpause")
 
     if not game_state.paused:
         spawn_waiting_enemies(game_state)
@@ -171,8 +173,12 @@ def update_game_state(game_state: GameState, input_state: InputState) -> None:
             game_state.tile_map,
             blocking_tanks=tuple(game_state.active_enemies),
         )
+        if input_state.movement_direction is not None and audio_manager is not None:
+            audio_manager.play_sfx("tank_move")
         if input_state.fire_requested and game_state.player_bullet is None:
             game_state.player_bullet = spawn_bullet_from_tank(game_state.player, owner="player")
+            if audio_manager is not None:
+                audio_manager.play_sfx("shoot")
         if game_state.player_bullet is not None:
             impact = advance_bullet(
                 game_state.player_bullet,
@@ -181,14 +187,25 @@ def update_game_state(game_state: GameState, input_state: InputState) -> None:
             )
             if impact.hit is BulletHit.EAGLE:
                 game_state.eagle_destroyed = True
+                if audio_manager is not None:
+                    audio_manager.play_sfx("bullet_hit")
+                    audio_manager.play_sfx("eagle_destroyed")
             elif impact.hit is BulletHit.ENEMY and impact.enemy_id is not None:
                 if damage_enemy(game_state, impact.enemy_id):
                     game_state.score += 100
                     game_state.enemies_remaining = max(0, game_state.enemies_remaining - 1)
+                    if audio_manager is not None:
+                        audio_manager.play_sfx("enemy_destroyed")
+            elif impact.hit is BulletHit.BRICK and audio_manager is not None:
+                audio_manager.play_sfx("bullet_hit")
+                audio_manager.play_sfx("brick_break")
+            elif impact.hit is BulletHit.STEEL and audio_manager is not None:
+                audio_manager.play_sfx("bullet_hit")
+                audio_manager.play_sfx("steel_hit")
             if not game_state.player_bullet.active:
                 game_state.player_bullet = None
 
-        update_enemies(game_state)
+        update_enemies(game_state, audio_manager=audio_manager)
         evaluate_match_state(game_state)
 
     game_state.frame_count += 1
@@ -285,6 +302,7 @@ def run_application_loop(
     clock = pygame.time.Clock()
     router = ScreenRouter()
     app_frame_count = 0
+    last_audio_signature: tuple | None = None
 
     while app_state.running:
         dt_ms = clock.tick(FPS)
@@ -301,6 +319,15 @@ def run_application_loop(
         viewport = compute_letterbox(SCREEN_WIDTH, SCREEN_HEIGHT, window_width, window_height)
         scene_events = remap_events_to_scene(events, viewport)
 
+        audio_signature = (
+            app_state.current_screen,
+            app_state.game_state.level_name if app_state.game_state is not None else None,
+            app_state.game_state.outcome if app_state.game_state is not None else None,
+        )
+        if app_state.audio_manager is not None and audio_signature != last_audio_signature:
+            sync_audio_state(app_state)
+            last_audio_signature = audio_signature
+
         active_screen = router.current(app_state)
         if active_screen is not None:
             for event in scene_events:
@@ -311,7 +338,7 @@ def run_application_loop(
             if app_state.game_state is None:
                 raise RuntimeError("PLAYING state requires an active GameState")
             input_state = build_input_state(events)
-            update_game_state(app_state.game_state, input_state)
+            update_game_state(app_state.game_state, input_state, audio_manager=app_state.audio_manager)
             if input_state.quit_requested:
                 app_state.running = False
             if app_state.game_state.paused:
@@ -332,6 +359,26 @@ def run_application_loop(
                 app_state.running = False
 
     return 0
+
+
+def sync_audio_state(app_state: AppState) -> None:
+    """Keep music and ambience aligned to the current screen and match state."""
+    audio = app_state.audio_manager
+    if audio is None:
+        return
+
+    if app_state.current_screen in {AppScreen.SPLASH, AppScreen.WELCOME, AppScreen.OPTIONS, AppScreen.ABOUT}:
+        audio.clear_outcome_latch()
+        audio.set_screen_audio(app_state.current_screen)
+        return
+
+    if app_state.current_screen in {AppScreen.PLAYING, AppScreen.PAUSED} and app_state.game_state is not None:
+        audio.clear_outcome_latch()
+        audio.set_gameplay_audio(app_state.game_state.level_name)
+        return
+
+    if app_state.current_screen is AppScreen.GAME_OVER and app_state.game_state is not None:
+        audio.set_outcome_audio(app_state.game_state.outcome)
 
 
 def spawn_waiting_enemies(game_state: GameState) -> None:
@@ -357,7 +404,7 @@ def spawn_waiting_enemies(game_state: GameState) -> None:
             return
 
 
-def update_enemies(game_state: GameState) -> None:
+def update_enemies(game_state: GameState, audio_manager=None) -> None:
     """Update enemy decisions, movement, and bullets."""
     for enemy in list(game_state.active_enemies):
         if enemy_requires_replan(enemy, game_state.tile_map):
@@ -371,6 +418,8 @@ def update_enemies(game_state: GameState) -> None:
             )
             if should_fire:
                 fire_enemy_bullet(enemy)
+                if audio_manager is not None:
+                    audio_manager.play_sfx("shoot")
 
         blocking_tanks: tuple[Tank, ...] = tuple(
             tank for tank in [game_state.player, *game_state.active_enemies] if tank is not enemy
@@ -381,8 +430,19 @@ def update_enemies(game_state: GameState) -> None:
             impact = advance_bullet(enemy.bullet, game_state.tile_map, player=game_state.player)
             if impact.hit is BulletHit.PLAYER:
                 game_state.lives = max(0, game_state.lives - 1)
+                if audio_manager is not None:
+                    audio_manager.play_sfx("player_hit")
             elif impact.hit is BulletHit.EAGLE:
                 game_state.eagle_destroyed = True
+                if audio_manager is not None:
+                    audio_manager.play_sfx("bullet_hit")
+                    audio_manager.play_sfx("eagle_destroyed")
+            elif impact.hit is BulletHit.BRICK and audio_manager is not None:
+                audio_manager.play_sfx("bullet_hit")
+                audio_manager.play_sfx("brick_break")
+            elif impact.hit is BulletHit.STEEL and audio_manager is not None:
+                audio_manager.play_sfx("bullet_hit")
+                audio_manager.play_sfx("steel_hit")
             if not enemy.bullet.active:
                 enemy.bullet = None
 

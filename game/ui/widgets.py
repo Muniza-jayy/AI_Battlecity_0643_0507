@@ -25,10 +25,14 @@ class Button:
     text_color: Color = (233, 225, 208)
     hovered: bool = False
     action_id: str | None = None
+    on_hover: Callable[[], None] = lambda: None
 
     def handle_event(self, event: pygame.event.Event) -> None:
         if event.type == pygame.MOUSEMOTION:
-            self.hovered = self.rect.collidepoint(event.pos)
+            next_hovered = self.rect.collidepoint(event.pos)
+            if next_hovered and not self.hovered:
+                self.on_hover()
+            self.hovered = next_hovered
         elif event.type == pygame.MOUSEBUTTONDOWN and event.button == 1:
             if self.rect.collidepoint(event.pos):
                 self.on_click()
